@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Download, CheckCircle2, User, Sparkles, Copy, FileText } from 'lucide-react';
+import { Plus, Search, Filter, Download, CheckCircle2, User, Sparkles, Copy, FileText, AlertCircle, Volume2, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Task, TaskStatus, Meeting, Speaker } from '../../types';
 import { KanbanCard } from './KanbanCard';
@@ -12,6 +12,9 @@ interface KanbanBoardProps {
   onUpdateTasks: (tasks: Task[]) => void;
   onExtractTasksAgain: () => void;
   isExtracting: boolean;
+  taskAlertMessage?: string | null;
+  onNavigateTab?: (tab: 'record' | 'transcript' | 'speakers' | 'kanban') => void;
+  onRequestClarification?: (speakerId: string) => void;
 }
 
 const COLUMNS: Array<{ id: TaskStatus; label: string; color: string; badgeBg: string }> = [
@@ -27,7 +30,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   speakers,
   onUpdateTasks,
   onExtractTasksAgain,
-  isExtracting
+  isExtracting,
+  taskAlertMessage,
+  onNavigateTab,
+  onRequestClarification
 }) => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -38,6 +44,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   // Collect unique assignees for filter
   const assignees = Array.from(new Set(tasks.map((t) => t.assignee).filter(Boolean)));
+
+  const unassignedSpeakers = speakers.filter(
+    (s) => !s.assignedName || s.confidence < 0.8
+  );
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData('text/plain', taskId);
@@ -201,6 +211,110 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Unassigned Speakers Notification */}
+      {unassignedSpeakers.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 shrink-0">
+              <Volume2 className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm font-semibold text-amber-200">
+                {unassignedSpeakers.length} {unassignedSpeakers.length === 1 ? 'Sprecher konnte' : 'Sprecher konnten'} noch keinem Namen zugeordnet werden
+              </p>
+              <p className="text-[11px] text-amber-300/70">
+                Spiele die 5s-Hörprobe ab, um die Stimme schnell einer Person zuzuweisen.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('speakers')}
+                className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-semibold transition-colors cursor-pointer shrink-0"
+              >
+                Zu den Sprechern
+              </button>
+            )}
+            {onRequestClarification && (
+              <button
+                onClick={() => onRequestClarification(unassignedSpeakers[0].id)}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-colors cursor-pointer shrink-0"
+              >
+                5s-Hörprobe starten
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Task Alert Message (e.g. from pipeline extraction) */}
+      {taskAlertMessage && (
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in">
+          <AlertCircle className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs sm:text-sm font-medium text-blue-200">
+              {taskAlertMessage}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Zero Tasks Info Card */}
+      {tasks.length === 0 && (
+        <div className="bg-slate-900/90 border border-amber-500/30 rounded-3xl p-8 text-center max-w-xl mx-auto my-6 shadow-2xl animate-in fade-in">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h3 className="text-base sm:text-lg font-bold text-white">
+            Keine Aufgaben im Meeting erkannt
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed max-w-md mx-auto">
+            Im Transkript wurden keine konkreten Aufgaben, Zuständigkeiten oder Fälligkeitsdaten erwähnt. Du kannst Aufgaben manuell erstellen oder das Transkript erneut analysieren.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+            <button
+              onClick={() => {
+                setSelectedTask({
+                  id: `task_${Date.now()}`,
+                  meetingId: meeting.id,
+                  title: '',
+                  assignee: speakers[0]?.assignedName || speakers[0]?.label || '',
+                  dueDate: null,
+                  description: '',
+                  status: 'todo',
+                  priority: 'medium',
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString()
+                });
+                setIsModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Aufgabe manuell anlegen</span>
+            </button>
+            <button
+              onClick={onExtractTasksAgain}
+              disabled={isExtracting}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs sm:text-sm border border-slate-700 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>{isExtracting ? 'Analysiere...' : 'Erneut mit KI analysieren'}</span>
+            </button>
+            {onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('transcript')}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs sm:text-sm transition-colors cursor-pointer"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Transkript prüfen</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Mobile Column Tab Selector (< md breakpoint) */}
       <div className="md:hidden flex rounded-xl bg-slate-900 border border-slate-800 p-1">

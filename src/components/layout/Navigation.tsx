@@ -1,12 +1,14 @@
 import React from 'react';
-import { Mic, FileText, Kanban, HelpCircle } from 'lucide-react';
+import { Mic, FileText, Users, Kanban } from 'lucide-react';
 
-export type AppTab = 'record' | 'transcript' | 'kanban';
+export type AppTab = 'record' | 'transcript' | 'speakers' | 'kanban';
 
 interface NavigationProps {
   currentTab: AppTab;
   onSelectTab: (tab: AppTab) => void;
   pendingClarificationCount: number;
+  speakerCount?: number;
+  segmentCount?: number;
   taskCount: number;
 }
 
@@ -14,6 +16,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   currentTab,
   onSelectTab,
   pendingClarificationCount,
+  speakerCount = 0,
+  segmentCount = 0,
   taskCount
 }) => {
   const tabs = [
@@ -25,10 +29,25 @@ export const Navigation: React.FC<NavigationProps> = ({
     },
     {
       id: 'transcript' as AppTab,
-      label: 'Transkript & Sprecher',
+      label: 'Transkript',
       icon: FileText,
-      badge: pendingClarificationCount > 0 ? `${pendingClarificationCount} unklar` : null,
-      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+      badge: segmentCount > 0 ? `${segmentCount}` : null,
+      badgeColor: 'bg-slate-800 text-slate-300 border-slate-700'
+    },
+    {
+      id: 'speakers' as AppTab,
+      label: 'Sprecher',
+      icon: Users,
+      badge:
+        pendingClarificationCount > 0
+          ? `${pendingClarificationCount} unklar`
+          : speakerCount > 0
+          ? `${speakerCount}`
+          : null,
+      badgeColor:
+        pendingClarificationCount > 0
+          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+          : 'bg-slate-800 text-slate-300 border-slate-700'
     },
     {
       id: 'kanban' as AppTab,
@@ -73,8 +92,8 @@ export const Navigation: React.FC<NavigationProps> = ({
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-2">
-        <div className="grid grid-cols-3 gap-1">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5">
+        <div className="grid grid-cols-4 gap-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = currentTab === tab.id;
@@ -82,22 +101,22 @@ export const Navigation: React.FC<NavigationProps> = ({
               <button
                 key={tab.id}
                 onClick={() => onSelectTab(tab.id)}
-                className={`relative flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all cursor-pointer ${
+                className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
                   isActive
                     ? 'text-blue-400 bg-blue-500/10 font-semibold'
                     : 'text-slate-400 hover:text-slate-200 active:bg-slate-800/50'
                 }`}
               >
                 <div className="relative">
-                  <Icon className="w-5 h-5" />
-                  {tab.badge && (
-                    <span className="absolute -top-1.5 -right-2.5 w-4 h-4 rounded-full bg-amber-500 text-slate-950 font-bold text-[9px] flex items-center justify-center">
+                  <Icon className="w-4 h-4" />
+                  {tab.id === 'speakers' && pendingClarificationCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 w-3.5 h-3.5 rounded-full bg-amber-500 text-slate-950 font-bold text-[8px] flex items-center justify-center">
                       !
                     </span>
                   )}
                 </div>
-                <span className="text-[11px] mt-1 tracking-tight truncate max-w-full">
-                  {tab.id === 'transcript' ? 'Transkript' : tab.label}
+                <span className="text-[10px] mt-1 tracking-tight truncate max-w-full">
+                  {tab.label}
                 </span>
               </button>
             );

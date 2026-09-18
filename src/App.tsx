@@ -10,6 +10,7 @@ import { Header } from './components/layout/Header';
 import { Navigation, AppTab } from './components/layout/Navigation';
 import { MeetingRecorder } from './components/recorder/MeetingRecorder';
 import { TranscriptViewer } from './components/transcript/TranscriptViewer';
+import { SpeakersViewer } from './components/speakers/SpeakersViewer';
 import { SpeakerClarificationModal } from './components/transcript/SpeakerClarificationModal';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
 import { SettingsModal } from './components/settings/SettingsModal';
@@ -27,6 +28,7 @@ export const App: React.FC = () => {
   const [reasoningLogs, setReasoningLogs] = useState<string[]>([]);
   const [liveReasoningText, setLiveReasoningText] = useState<string>('');
   const [isExtractingTasks, setIsExtractingTasks] = useState(false);
+  const [taskAlertMessage, setTaskAlertMessage] = useState<string | null>(null);
   const [clarificationRequest, setClarificationRequest] = useState<SpeakerClarificationRequest | null>(null);
   const [clarificationQueue, setClarificationQueue] = useState<SpeakerClarificationRequest[]>([]);
 
@@ -152,10 +154,19 @@ export const App: React.FC = () => {
         }
       );
 
-      setReasoningLogs((prev) => [
-        ...prev,
-        `[kanban.done] ${tasks.length} Aufgaben erfolgreich generiert.`
-      ]);
+      if (tasks.length === 0) {
+        setReasoningLogs((prev) => [
+          ...prev,
+          `[kanban.info] 0 Aufgaben erkannt. Im Transkript wurden keine konkreten Next Steps identifiziert.`
+        ]);
+        setTaskAlertMessage('Keine Aufgaben im Gespräch erkannt: Die KI konnte aus dem besprochenen Inhalt keine konkreten Aufgaben oder Next Steps ableiten.');
+      } else {
+        setReasoningLogs((prev) => [
+          ...prev,
+          `[kanban.done] ${tasks.length} Aufgaben erfolgreich generiert. Wechsle zum Kanban Board...`
+        ]);
+        setTaskAlertMessage(null);
+      }
 
       const newMeeting: Meeting = {
         id: meetingId,
@@ -174,14 +185,13 @@ export const App: React.FC = () => {
       setMeetings((prev) => [newMeeting, ...prev]);
       setCurrentMeetingId(meetingId);
 
-      // Handle clarification queue
+      // Save clarification queue for badges & banner in Kanban
       if (clarificationNeeded.length > 0) {
         setClarificationQueue(clarificationNeeded);
-        setClarificationRequest(clarificationNeeded[0]);
-        setActiveTab('transcript');
-      } else {
-        setActiveTab('kanban');
       }
+
+      // Automatically switch to Kanban board as requested
+      setActiveTab('kanban');
     } catch (err) {
       console.error('Fehler in der Meeting-Verarbeitung:', err);
       alert('Ein Fehler ist bei der Verarbeitung aufgetreten: ' + (err instanceof Error ? err.message : String(err)));
@@ -237,14 +247,18 @@ export const App: React.FC = () => {
     setIsProcessing(false);
     setProcessingStep('');
 
-    // If clarification needed (e.g. Sarah), prompt user with snippet immediately
+    if (tasks.length === 0) {
+      setTaskAlertMessage('Keine Aufgaben im Gespräch erkannt: Im Transkript wurden keine Aufgaben identifiziert.');
+    } else {
+      setTaskAlertMessage(null);
+    }
+
     if (clarificationNeeded.length > 0) {
       setClarificationQueue(clarificationNeeded);
-      setClarificationRequest(clarificationNeeded[0]);
-      setActiveTab('transcript');
-    } else {
-      setActiveTab('kanban');
     }
+
+    // Automatically switch to Kanban board as requested
+    setActiveTab('kanban');
   };
 
   /**
@@ -367,6 +381,13 @@ export const App: React.FC = () => {
 
       await AudioStorage.saveMeeting(updatedMeeting);
       setMeetings((prev) => prev.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m)));
+      
+      if (extracted.length === 0) {
+        setTaskAlertMessage('Keine Aufgaben im Gespräch erkannt: Im Transkript wurden keine konkreten Aufgaben oder Next Steps identifiziert.');
+      } else {
+        setTaskAlertMessage(null);
+      }
+
       setActiveTab('kanban');
     } catch (err) {
       console.error('Fehler beim Extrahieren der Aufgaben:', err);
@@ -423,6 +444,8 @@ export const App: React.FC = () => {
         currentTab={activeTab}
         onSelectTab={setActiveTab}
         pendingClarificationCount={pendingClarificationCount}
+        speakerCount={currentMeeting?.speakers.length || 0}
+        segmentCount={currentMeeting?.segments.length || 0}
         taskCount={currentMeeting?.tasks.length || 0}
       />
 
@@ -449,10 +472,32 @@ export const App: React.FC = () => {
             onRequestClarification={handleRequestClarification}
             onExtractTasks={handleExtractTasksAgain}
             isExtractingTasks={isExtractingTasks}
+            onNavigateTab={setActiveTab}
           />
         )}
 
         {activeTab === 'transcript' && !currentMeeting && (
+          <div className="text-center py-20 px-4">
+            <p className="text-slate-400 text-sm">Kein Meeting ausgewählt.</p>
+            <button
+              onClick={() => setActiveTab('record')}
+              className="mt-3 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold cursor-pointer"
+            >
+              Meeting aufnehmen oder Demo laden
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'speakers' && currentMeeting && (
+          <SpeakersViewer
+            meeting={currentMeeting}
+            onUpdateSpeakerName={(id, name) => handleAssignSpeakerName(id, name)}
+            onRequestClarification={handleRequestClarification}
+            onNavigateTab={setActiveTab}
+          />
+        )}
+
+        {activeTab === 'speakers' && !currentMeeting && (
           <div className="text-center py-20 px-4">
             <p className="text-slate-400 text-sm">Kein Meeting ausgewählt.</p>
             <button
@@ -472,6 +517,9 @@ export const App: React.FC = () => {
             onUpdateTasks={handleUpdateTasks}
             onExtractTasksAgain={handleExtractTasksAgain}
             isExtracting={isExtractingTasks}
+            taskAlertMessage={taskAlertMessage}
+            onNavigateTab={setActiveTab}
+            onRequestClarification={handleRequestClarification}
           />
         )}
 

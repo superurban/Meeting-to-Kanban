@@ -96,4 +96,41 @@ describe('Speaker Deduction & Date Utils', () => {
     expect(cfTask?.description.length).toBeGreaterThan(10);
     expect(['backlog', 'todo', 'in_progress', 'done']).toContain(cfTask?.status);
   });
+
+  it('TaskExtractorService returns empty array when no actionable tasks are discussed', async () => {
+    const { TaskExtractorService } = await import('../src/services/ai/taskExtractor');
+    const casualSegments = [
+      {
+        id: 'c1',
+        speakerId: 'spk_1',
+        speakerLabel: 'Alex',
+        startTime: 0,
+        endTime: 3,
+        text: 'Schönes Wetter heute draußen.'
+      },
+      {
+        id: 'c2',
+        speakerId: 'spk_2',
+        speakerLabel: 'Florian',
+        startTime: 3.5,
+        endTime: 6,
+        text: 'Ja absolut, wirklich sehr angenehm.'
+      }
+    ];
+
+    const speakers = [
+      { id: 'spk_1', label: 'Sprecher 1', assignedName: 'Alex', confidence: 1.0, color: '#3b82f6' },
+      { id: 'spk_2', label: 'Sprecher 2', assignedName: 'Florian', confidence: 1.0, color: '#10b981' }
+    ];
+
+    const tasks = await TaskExtractorService.extractTasks(
+      'meet_casual',
+      '2026-09-18T10:00:00Z',
+      casualSegments,
+      speakers
+    );
+
+    expect(tasks).toEqual([]);
+    expect(tasks.length).toBe(0);
+  });
 });

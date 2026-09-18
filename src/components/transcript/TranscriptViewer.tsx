@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Play, Square, UserCheck, AlertTriangle, Sparkles, Volume2, Edit2, ArrowRight } from 'lucide-react';
+import { Play, Square, UserCheck, AlertTriangle, Sparkles, Volume2, Edit2, ArrowRight, FileText, Users } from 'lucide-react';
 import { Meeting, TranscriptSegment, Speaker } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
 import { formatTimestamp } from '../../utils/dateUtils';
+import { AppTab } from '../layout/Navigation';
 
 interface TranscriptViewerProps {
   meeting: Meeting;
@@ -10,6 +11,7 @@ interface TranscriptViewerProps {
   onRequestClarification: (speakerId: string) => void;
   onExtractTasks: () => void;
   isExtractingTasks: boolean;
+  onNavigateTab?: (tab: AppTab) => void;
 }
 
 export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
@@ -17,7 +19,8 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   onUpdateSpeakerName,
   onRequestClarification,
   onExtractTasks,
-  isExtractingTasks
+  isExtractingTasks,
+  onNavigateTab
 }) => {
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
 
@@ -51,6 +54,36 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      {/* Sub-Tabs Switcher: Transkript & Sprecher */}
+      {onNavigateTab && (
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigateTab('transcript')}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-blue-600 text-white shadow-md shadow-blue-600/30 transition-all cursor-pointer"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Transkript ({meeting.segments.length})</span>
+            </button>
+            <button
+              onClick={() => onNavigateTab('speakers')}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-colors cursor-pointer"
+            >
+              <Users className="w-4 h-4" />
+              <span>Sprecher ({meeting.speakers.length})</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => onNavigateTab('kanban')}
+            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium cursor-pointer"
+          >
+            <span>Zum Kanban Board</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Action & Status Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
         <div>
