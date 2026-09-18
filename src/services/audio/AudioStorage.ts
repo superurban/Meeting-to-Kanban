@@ -134,7 +134,16 @@ export class AudioStorage {
     const saved = localStorage.getItem('openrouter_config');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Auto-migrate obsolete or inactive Gemini 2.0/1.5 IDs to the active Gemini 3.8 Flash
+        if (!parsed.audioModel || parsed.audioModel.includes('2.0-flash') || parsed.audioModel.includes('1.5')) {
+          parsed.audioModel = 'google/gemini-3.8-flash';
+        }
+        if (!parsed.summaryModel) {
+          parsed.summaryModel = 'deepseek/deepseek-chat';
+        }
+        localStorage.setItem('openrouter_config', JSON.stringify(parsed));
+        return parsed;
       } catch {
         // fallback
       }

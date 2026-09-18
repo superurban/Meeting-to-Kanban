@@ -57,19 +57,44 @@ Antworte ausschließlich mit einem validen JSON-Array in folgendem Format:
   }
 ]`;
 
-    const audioModel = client.getConfig().audioModel || 'google/gemini-2.0-flash-001';
+    let audioModel = client.getConfig().audioModel || 'google/gemini-3.8-flash';
+    if (audioModel.includes('2.0-flash') || audioModel.includes('1.5')) {
+      audioModel = 'google/gemini-3.8-flash';
+    }
 
-    const response = await client.chatCompletion({
-      prompt,
-      model: audioModel,
-      system: 'Du bist ein hochpräziser Transkriptions- und Diarisierungs-Assistent. Transkribiere exakt das, was in der Audiodatei gesagt wird.',
-      audioData: {
-        base64: base64Audio,
-        mimeType: finalMime
-      },
-      temperature: 0.1,
-      jsonResponse: true
-    });
+    let response: string;
+    try {
+      response = await client.chatCompletion({
+        prompt,
+        model: audioModel,
+        system: 'Du bist ein hochpräziser Transkriptions- und Diarisierungs-Assistent. Transkribiere exakt das, was in der Audiodatei gesagt wird.',
+        audioData: {
+          base64: base64Audio,
+          mimeType: finalMime
+        },
+        temperature: 0.1,
+        jsonResponse: true
+      });
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.includes('404') || errMsg.includes('No endpoints found')) {
+        console.warn(`Modell ${audioModel} nicht verfügbar, versuche Fallback auf google/gemini-3.8-flash...`);
+        audioModel = 'google/gemini-3.8-flash';
+        response = await client.chatCompletion({
+          prompt,
+          model: audioModel,
+          system: 'Du bist ein hochpräziser Transkriptions- und Diarisierungs-Assistent. Transkribiere exakt das, was in der Audiodatei gesagt wird.',
+          audioData: {
+            base64: base64Audio,
+            mimeType: finalMime
+          },
+          temperature: 0.1,
+          jsonResponse: true
+        });
+      } else {
+        throw err;
+      }
+    }
 
     try {
       let cleanResponse = response.trim();

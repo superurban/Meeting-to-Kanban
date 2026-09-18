@@ -32,6 +32,8 @@ export const App: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       try {
+        const freshConfig = AudioStorage.getOpenRouterConfig();
+        setConfig(freshConfig);
         const loaded = await AudioStorage.getAllMeetings();
         setMeetings(loaded);
         if (loaded.length > 0) {
