@@ -12,9 +12,10 @@ interface SettingsModalProps {
 }
 
 const AUDIO_MODELS = [
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Empfohlen: Schnelle Multi-Speaker Diarisierung)', provider: 'Google' },
-  { id: 'google/gemini-1.5-pro', name: 'Gemini 1.5 Pro (Multimodal mit großem Audio-Kontext)', provider: 'Google' },
-  { id: 'openai/gpt-4o-audio-preview', name: 'GPT-4o Audio Preview', provider: 'OpenAI' }
+  { id: 'google/gemini-3.8-flash', name: 'Google: Gemini 3.8 Flash (Beste Empfehlung: Neueste Generation & präziseste Sprechertrennung)', provider: 'Google' },
+  { id: 'google/gemini-2.5-flash', name: 'Google: Gemini 2.5 Flash (Schnell & sehr günstig: $0.30/1M Token)', provider: 'Google' },
+  { id: 'google/gemini-flash-latest', name: 'Google: Gemini Flash Latest (Verweist automatisch immer auf das neueste Modell)', provider: 'Google' },
+  { id: 'google/gemini-2.5-pro', name: 'Google: Gemini 2.5 Pro (Für hallige Konferenzräume & schwere Akustik)', provider: 'Google' }
 ];
 
 const SUMMARY_MODELS = [

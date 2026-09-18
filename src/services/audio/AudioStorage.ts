@@ -142,7 +142,7 @@ export class AudioStorage {
     return {
       apiKey: '',
       model: 'deepseek/deepseek-chat',
-      audioModel: 'google/gemini-2.0-flash-001',
+      audioModel: 'google/gemini-3.8-flash',
       summaryModel: 'deepseek/deepseek-chat',
       siteUrl: window.location.origin,
       appName: 'VoiceToKanban'
