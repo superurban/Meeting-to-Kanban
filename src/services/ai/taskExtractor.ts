@@ -77,7 +77,8 @@ Antworte ausschließlich im JSON-Format mit dieser Struktur:
           system: 'Du bist ein erfahrener Projektmanager und agiler Coach. Du extrahierst verbindliche Aufgaben und Next Steps aus Meetings.',
           temperature: 0.2,
           stream: true,
-          onReasoning: callbacks?.onReasoningChunk
+          onReasoning: callbacks?.onReasoningChunk,
+          onApiLog: callbacks?.onProgressLog
         });
 
         let cleanResponse = response.trim();

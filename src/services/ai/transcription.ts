@@ -32,19 +32,17 @@ export class TranscriptionService {
       onContentChunk?: (chunk: string) => void;
     }
   ): Promise<TranscriptSegment[]> {
-    callbacks?.onProgressLog?.('Optimiere Audio: Konvertiere zu 16kHz Mono PCM WAV...');
-
     // 1. Convert any audio (WebM, OGG, MP4) to 16kHz mono WAV for 100% reliable API acceptance
     let processedBlob = audioBlob;
     let finalMime = 'audio/wav';
     try {
       const { convertBlobToWav } = await import('../audio/wavConverter');
       processedBlob = await convertBlobToWav(audioBlob, 16000);
-      callbacks?.onProgressLog?.('Audio erfolgreich nach WAV konvertiert (Sample-Rate: 16.000 Hz).');
+      callbacks?.onProgressLog?.(`[audio] ${processedBlob.size} Bytes PCM WAV (16.000 Hz, mono)`);
     } catch (err) {
       console.warn('Browser WAV conversion error, falling back to original blob:', err);
       finalMime = mimeType;
-      callbacks?.onProgressLog?.('WAV-Konvertierung übersprungen, nutze Original-Audioformat.');
+      callbacks?.onProgressLog?.(`[audio] ${audioBlob.size} Bytes (${mimeType})`);
     }
 
     const base64Audio = await this.blobToBase64(processedBlob);
@@ -71,9 +69,6 @@ Antworte ausschließlich mit einem validen JSON-Array in folgendem Format:
       audioModel = 'google/gemini-3.8-flash';
     }
 
-    callbacks?.onProgressLog?.(`Verbinde mit OpenRouter (${audioModel})...`);
-    callbacks?.onProgressLog?.('Übertrage Audiospur für Speaker Diarization & Stimmenerkennung...');
-
     let response: string;
     try {
       response = await client.chatCompletion({
@@ -87,12 +82,13 @@ Antworte ausschließlich mit einem validen JSON-Array in folgendem Format:
         temperature: 0.1,
         stream: true,
         onReasoning: callbacks?.onReasoningChunk,
-        onContent: callbacks?.onContentChunk
+        onContent: callbacks?.onContentChunk,
+        onApiLog: callbacks?.onProgressLog
       });
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       if (errMsg.includes('404') || errMsg.includes('No endpoints found')) {
-        callbacks?.onProgressLog?.(`Modell ${audioModel} nicht verfügbar, versuche Fallback auf google/gemini-3.8-flash...`);
+        callbacks?.onProgressLog?.(`[retry] Modell ${audioModel} nicht verfügbar, wechsel auf google/gemini-3.8-flash...`);
         audioModel = 'google/gemini-3.8-flash';
         response = await client.chatCompletion({
           prompt,
@@ -105,7 +101,8 @@ Antworte ausschließlich mit einem validen JSON-Array in folgendem Format:
           temperature: 0.1,
           stream: true,
           onReasoning: callbacks?.onReasoningChunk,
-          onContent: callbacks?.onContentChunk
+          onContent: callbacks?.onContentChunk,
+          onApiLog: callbacks?.onProgressLog
         });
       } else {
         throw err;

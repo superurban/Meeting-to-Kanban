@@ -29,6 +29,7 @@ export class OpenRouterClient {
     stream?: boolean;
     onReasoning?: (chunk: string) => void;
     onContent?: (chunk: string) => void;
+    onApiLog?: (log: string) => void;
   }): Promise<string> {
     if (!this.hasApiKey()) {
       throw new Error('Kein OpenRouter API-Key konfiguriert. Bitte in den Einstellungen hinterlegen.');
@@ -88,6 +89,8 @@ export class OpenRouterClient {
     if (isStreaming) {
       payload.stream = true;
 
+      options.onApiLog?.(`[fetch] POST https://openrouter.ai/api/v1/chat/completions (model: "${model}", stream: true)`);
+
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -98,6 +101,8 @@ export class OpenRouterClient {
         },
         body: JSON.stringify(payload)
       });
+
+      options.onApiLog?.(`[response] HTTP ${response.status} ${response.statusText} • Content-Type: ${response.headers.get('content-type') || 'text/event-stream'}`);
 
       if (!response.ok) {
         let errDetail = response.statusText;
@@ -154,6 +159,7 @@ export class OpenRouterClient {
         }
       }
 
+      options.onApiLog?.(`[done] Stream completed • ${fullContent.length} chars generated`);
       return fullContent;
     }
 

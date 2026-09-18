@@ -81,7 +81,9 @@ export const App: React.FC = () => {
     title: string
   ) => {
     setIsProcessing(true);
-    setReasoningLogs([`[${new Date().toLocaleTimeString('de-DE')}] Starte Audio-Pipeline für "${title}" (${Math.round(durationSeconds)}s)`]);
+    setReasoningLogs([
+      `[audio.capture] MediaRecorder Blob: ${audioBlob.size} Bytes (${mimeType}, duration: ${durationSeconds.toFixed(1)}s)`
+    ]);
     setLiveReasoningText('');
     setProcessingStep('Audio wird aufbereitet...');
 
@@ -106,7 +108,7 @@ export const App: React.FC = () => {
         client,
         {
           onProgressLog: (log) => {
-            setReasoningLogs((prev) => [...prev, `[${new Date().toLocaleTimeString('de-DE')}] ${log}`]);
+            setReasoningLogs((prev) => [...prev, log]);
           },
           onReasoningChunk: (chunk) => {
             setLiveReasoningText((prev) => prev + chunk);
@@ -120,7 +122,7 @@ export const App: React.FC = () => {
       setProcessingStep('Analysiere Sprecher & Identitäten...');
       setReasoningLogs((prev) => [
         ...prev,
-        `[${new Date().toLocaleTimeString('de-DE')}] ${segments.length} Sprachabschnitte erkannt. Analysiere Sprecher und Namensmuster...`
+        `[diarization.parse] ${segments.length} Segmente aus Modell-Antwort extrahiert.`
       ]);
 
       const { speakers, clarificationNeeded } = await SpeakerDeductionService.resolveSpeakers(
@@ -130,10 +132,10 @@ export const App: React.FC = () => {
 
       setReasoningLogs((prev) => [
         ...prev,
-        `[${new Date().toLocaleTimeString('de-DE')}] ${speakers.length} Sprecher zugeordnet (${clarificationNeeded.length} unklare Stimme(n) zur Klärung).`
+        `[speaker.resolve] ${speakers.length} Sprecher erfasst • ${clarificationNeeded.length} Sprecher ohne Namen.`
       ]);
 
-      setProcessingStep('Extrahiere Aufgaben & Next Steps mit DeepSeek...');
+      setProcessingStep('Extrahiere Aufgaben mit DeepSeek...');
       const tasks = await TaskExtractorService.extractTasks(
         meetingId,
         meetingDate,
@@ -142,13 +144,18 @@ export const App: React.FC = () => {
         client.hasApiKey() ? client : undefined,
         {
           onProgressLog: (log) => {
-            setReasoningLogs((prev) => [...prev, `[${new Date().toLocaleTimeString('de-DE')}] ${log}`]);
+            setReasoningLogs((prev) => [...prev, log]);
           },
           onReasoningChunk: (chunk) => {
             setLiveReasoningText((prev) => prev + chunk);
           }
         }
       );
+
+      setReasoningLogs((prev) => [
+        ...prev,
+        `[kanban.done] ${tasks.length} Aufgaben erfolgreich generiert.`
+      ]);
 
       const newMeeting: Meeting = {
         id: meetingId,
