@@ -27,13 +27,24 @@ export class TranscriptionService {
     mimeType: string,
     client: OpenRouterClient
   ): Promise<TranscriptSegment[]> {
-    const base64Audio = await this.blobToBase64(audioBlob);
+    // 1. Convert any audio (WebM, OGG, MP4) to 16kHz mono WAV for 100% reliable API acceptance
+    let processedBlob = audioBlob;
+    let finalMime = 'audio/wav';
+    try {
+      const { convertBlobToWav } = await import('../audio/wavConverter');
+      processedBlob = await convertBlobToWav(audioBlob, 16000);
+    } catch (err) {
+      console.warn('Browser WAV conversion error, falling back to original blob:', err);
+      finalMime = mimeType;
+    }
+
+    const base64Audio = await this.blobToBase64(processedBlob);
 
     const prompt = `Transkribiere diese Audioaufnahme eines Meetings.
 Aufgaben:
 1. Erkenne unterschiedliche Sprecher und weise ihnen fortlaufende Kennungen zu (z.B. speaker_1, speaker_2, speaker_3).
 2. Erfasse präzise Zeitstempel für Start- und Endzeit jedes Sprechbeitrags in Sekunden.
-3. Transkribiere den gesprochenen Text im Originalwortlaut.
+3. Transkribiere den tatsächlich gesprochenen Text im genauen Originalwortlaut (KEINE erfundenen Dialoge!).
 
 Antworte ausschließlich mit einem validen JSON-Array in folgendem Format:
 [
@@ -42,27 +53,44 @@ Antworte ausschließlich mit einem validen JSON-Array in folgendem Format:
     "speakerLabel": "Sprecher 1",
     "startTime": 0.0,
     "endTime": 5.2,
-    "text": "Gesprochener Satz..."
+    "text": "Tatsächlich gesprochener Satz..."
   }
 ]`;
 
+    const audioModel = client.getConfig().audioModel || 'google/gemini-2.0-flash-001';
+
     const response = await client.chatCompletion({
       prompt,
-      model: client.getConfig().audioModel || 'google/gemini-2.0-flash-001',
-      system: 'Du bist ein hochpräziser Transkriptions- und Diarisierungs-Assistent.',
+      model: audioModel,
+      system: 'Du bist ein hochpräziser Transkriptions- und Diarisierungs-Assistent. Transkribiere exakt das, was in der Audiodatei gesagt wird.',
       audioData: {
         base64: base64Audio,
-        mimeType
+        mimeType: finalMime
       },
       temperature: 0.1,
       jsonResponse: true
     });
 
     try {
-      let parsed = JSON.parse(response);
-      // If response is wrapped in an object like { segments: [...] }
-      if (!Array.isArray(parsed) && parsed.segments && Array.isArray(parsed.segments)) {
-        parsed = parsed.segments;
+      let cleanResponse = response.trim();
+      if (cleanResponse.startsWith('```')) {
+        cleanResponse = cleanResponse.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '');
+      }
+
+      let parsed = JSON.parse(cleanResponse);
+      // If response is wrapped in an object like { segments: [...] } or { transcript: [...] }
+      if (!Array.isArray(parsed)) {
+        if (parsed.segments && Array.isArray(parsed.segments)) {
+          parsed = parsed.segments;
+        } else if (parsed.transcript && Array.isArray(parsed.transcript)) {
+          parsed = parsed.transcript;
+        } else if (parsed.speakers && Array.isArray(parsed.speakers)) {
+          parsed = parsed.speakers;
+        }
+      }
+
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error('Kein Sprachinhalt im Audio erkannt oder ungültige Struktur.');
       }
 
       return (parsed as Array<Record<string, unknown>>).map((item, index) => ({
@@ -71,11 +99,11 @@ Antworte ausschließlich mit einem validen JSON-Array in folgendem Format:
         speakerLabel: String(item.speakerLabel || `Sprecher ${item.speakerId || index + 1}`),
         startTime: Number(item.startTime || index * 5),
         endTime: Number(item.endTime || (index + 1) * 5),
-        text: String(item.text || '')
+        text: String(item.text || item.content || '')
       }));
     } catch (e) {
       console.error('Failed to parse transcription response:', e, response);
-      throw new Error('Transkriptionsantwort konnte nicht verarbeitet werden.');
+      throw new Error(`Die KI-Transkription konnte nicht verarbeitet werden (${e instanceof Error ? e.message : String(e)}). Rohantwort: ${response.slice(0, 150)}...`);
     }
   }
 

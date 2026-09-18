@@ -6,6 +6,8 @@ import { formatDuration } from '../../utils/dateUtils';
 interface MeetingRecorderProps {
   onRecordingComplete: (audioBlob: Blob, mimeType: string, durationSeconds: number, title: string) => Promise<void>;
   onLoadDemo: () => Promise<void>;
+  onOpenSettings: () => void;
+  hasApiKey: boolean;
   isProcessing: boolean;
   processingStep: string;
 }
@@ -13,6 +15,8 @@ interface MeetingRecorderProps {
 export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   onRecordingComplete,
   onLoadDemo,
+  onOpenSettings,
+  hasApiKey,
   isProcessing,
   processingStep
 }) => {
@@ -132,6 +136,27 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 sm:py-10 space-y-6">
+      {/* API Key Status Notice if Missing */}
+      {!hasApiKey && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-200">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <div>
+              <p className="font-bold text-amber-300 text-sm">OpenRouter API-Key erforderlich für echte Transkription</p>
+              <p className="text-amber-200/80 mt-0.5">
+                Ohne Key kann dein gesprochenes Audio nicht verarbeitet werden. Bitte trage deinen Key ein.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onOpenSettings}
+            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shrink-0 transition-colors cursor-pointer shadow-sm"
+          >
+            Key jetzt eintragen
+          </button>
+        </div>
+      )}
+
       {/* Title Input Card */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl">
         <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">

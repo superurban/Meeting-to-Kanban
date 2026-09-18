@@ -80,24 +80,21 @@ export const App: React.FC = () => {
     setProcessingStep('Transkribiere Audioaufnahme...');
 
     const client = new OpenRouterClient(config);
+
+    if (!client.hasApiKey()) {
+      setIsProcessing(false);
+      setProcessingStep('');
+      alert('Kein OpenRouter API-Key gefunden!\n\nBitte trage deinen API-Key in den Einstellungen ein (Zahnrad oben rechts), damit dein gesprochenes Audio transkribiert werden kann.\n\n(Um die App ohne Key zu testen, nutze bitte unten den Button "Beispiel-Meeting laden".)');
+      setIsSettingsOpen(true);
+      return;
+    }
+
     const meetingId = `meeting_${Date.now()}`;
     const meetingDate = new Date().toISOString();
 
     try {
-      let segments = [];
-      if (client.hasApiKey()) {
-        try {
-          segments = await TranscriptionService.transcribeAudio(audioBlob, mimeType, client);
-        } catch (err: unknown) {
-          console.warn('Multimodale Transkription fehlgeschlagen, verwende Fallback-Transkript:', err);
-          const fallback = TranscriptionService.getSampleDemoMeeting();
-          segments = fallback.segments;
-        }
-      } else {
-        // Without API key, load sample segments for immediate experience
-        const fallback = TranscriptionService.getSampleDemoMeeting();
-        segments = fallback.segments;
-      }
+      // Real AI transcription of the user's audio
+      const segments = await TranscriptionService.transcribeAudio(audioBlob, mimeType, client);
 
       setProcessingStep('Analysiere Sprecher & Identitäten...');
       const { speakers, clarificationNeeded } = await SpeakerDeductionService.resolveSpeakers(
@@ -389,6 +386,8 @@ export const App: React.FC = () => {
           <MeetingRecorder
             onRecordingComplete={handleRecordingComplete}
             onLoadDemo={handleLoadDemo}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            hasApiKey={Boolean(config.apiKey && config.apiKey.trim().length > 0)}
             isProcessing={isProcessing}
             processingStep={processingStep}
           />
