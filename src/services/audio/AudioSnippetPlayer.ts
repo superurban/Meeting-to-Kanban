@@ -5,15 +5,16 @@ export class AudioSnippetPlayer {
 
   /**
    * Plays an audio snippet from startTime to endTime (in seconds).
-   * If blobOrUrl is provided, it uses HTMLAudioElement.
-   * If not available or playback fails, it falls back to speech synthesis or sound indicator.
+   * If maxDurationSeconds is provided (e.g. 5.0), playback will stop after this duration.
+   * If not provided or set to undefined, plays the full segment normally.
    */
   static async playSnippet(
     blobOrUrl: Blob | string | undefined,
     startTime: number,
     endTime: number,
     textFallback?: string,
-    onStatusChange?: (isPlaying: boolean) => void
+    onStatusChange?: (isPlaying: boolean) => void,
+    maxDurationSeconds?: number
   ): Promise<void> {
     this.stopCurrent();
 
@@ -22,7 +23,8 @@ export class AudioSnippetPlayer {
       this.activeCallback(true);
     }
 
-    const duration = Math.max(0.5, endTime - startTime);
+    const naturalDuration = Math.max(0.5, endTime - startTime);
+    const duration = maxDurationSeconds ? Math.min(maxDurationSeconds, naturalDuration) : naturalDuration;
 
     if (blobOrUrl) {
       try {

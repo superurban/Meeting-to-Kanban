@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Volume2, Play, Square, UserCheck, X, Sparkles, HelpCircle } from 'lucide-react';
+import { Volume2, Play, Square, UserCheck, X, HelpCircle, FastForward } from 'lucide-react';
 import { SpeakerClarificationRequest } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
 import { formatTimestamp } from '../../utils/dateUtils';
@@ -18,12 +18,12 @@ export const SpeakerClarificationModal: React.FC<SpeakerClarificationModalProps>
   onDismiss
 }) => {
   const [nameInput, setNameInput] = useState('');
-  const [isPlayingSnippet, setIsPlayingSnippet] = useState(false);
+  const [activePlayback, setActivePlayback] = useState<'5s' | 'full' | null>(null);
 
   useEffect(() => {
     if (request) {
       setNameInput(request.currentLabel.startsWith('Sprecher') ? '' : request.currentLabel);
-      setIsPlayingSnippet(false);
+      setActivePlayback(null);
     }
     return () => {
       AudioSnippetPlayer.stopCurrent();
@@ -32,19 +32,44 @@ export const SpeakerClarificationModal: React.FC<SpeakerClarificationModalProps>
 
   if (!request) return null;
 
-  const handleTogglePlaySnippet = () => {
-    if (isPlayingSnippet) {
+  const snippetStartTime = request.bestSegment.startTime;
+  const naturalDuration = Math.max(0.5, request.bestSegment.endTime - request.bestSegment.startTime);
+  const snippetEndTime = snippetStartTime + Math.min(5.0, naturalDuration);
+
+  const handleToggle5sSnippet = () => {
+    if (activePlayback === '5s') {
       AudioSnippetPlayer.stopCurrent();
-      setIsPlayingSnippet(false);
+      setActivePlayback(null);
     } else {
+      setActivePlayback('5s');
+      AudioSnippetPlayer.playSnippet(
+        audioBlob,
+        snippetStartTime,
+        snippetEndTime,
+        request.bestSegment.text,
+        (playing) => {
+          if (!playing) setActivePlayback(null);
+        },
+        5.0 // exactly 5 seconds
+      );
+    }
+  };
+
+  const handleToggleFullPlay = () => {
+    if (activePlayback === 'full') {
+      AudioSnippetPlayer.stopCurrent();
+      setActivePlayback(null);
+    } else {
+      setActivePlayback('full');
       AudioSnippetPlayer.playSnippet(
         audioBlob,
         request.bestSegment.startTime,
         request.bestSegment.endTime,
         request.bestSegment.text,
         (playing) => {
-          setIsPlayingSnippet(playing);
-        }
+          if (!playing) setActivePlayback(null);
+        },
+        undefined // normal playback without 5-second restriction
       );
     }
   };
@@ -70,7 +95,7 @@ export const SpeakerClarificationModal: React.FC<SpeakerClarificationModalProps>
                 Sprecher-Zuordnung klären
               </h2>
               <p className="text-xs text-slate-400">
-                Identifiziere die Person anhand der Stimme
+                5-Sekunden-Hörprobe zur Stimmenerkennung
               </p>
             </div>
           </div>
@@ -87,44 +112,69 @@ export const SpeakerClarificationModal: React.FC<SpeakerClarificationModalProps>
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span className="font-semibold text-slate-300 flex items-center gap-1.5">
               <Volume2 className="w-3.5 h-3.5 text-blue-400" />
-              Soundschnipsel von {request.currentLabel}
+              Stimmprobe: {request.currentLabel}
             </span>
-            <span>
-              {formatTimestamp(request.bestSegment.startTime)} - {formatTimestamp(request.bestSegment.endTime)}
+            <span className="bg-blue-500/10 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded text-[11px] font-mono">
+              {formatTimestamp(snippetStartTime)} - {formatTimestamp(snippetEndTime)} (5s)
             </span>
           </div>
 
           {/* Transcript Quote */}
-          <blockquote className="text-sm italic text-slate-200 border-l-2 border-blue-500 pl-3 py-1">
+          <blockquote className="text-sm italic text-slate-200 border-l-2 border-blue-500 pl-3 py-1.5 bg-slate-900/50 rounded-r-lg">
             "{request.bestSegment.text}"
           </blockquote>
 
-          {/* Play/Stop Button with Wave Animation */}
-          <button
-            onClick={handleTogglePlaySnippet}
-            className={`w-full py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-xs sm:text-sm transition-all cursor-pointer ${
-              isPlayingSnippet
-                ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30'
-                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25'
-            }`}
-          >
-            {isPlayingSnippet ? (
-              <>
-                <Square className="w-4 h-4 fill-white" />
-                <span>Wiedergabe stoppen</span>
-                <span className="flex gap-1 items-center ml-2">
-                  <span className="w-1 h-3 bg-white animate-bounce" />
-                  <span className="w-1 h-4 bg-white animate-bounce delay-75" />
-                  <span className="w-1 h-2 bg-white animate-bounce delay-150" />
-                </span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 fill-white" />
-                <span>Soundschnipsel anhören</span>
-              </>
-            )}
-          </button>
+          {/* Audio Controls */}
+          <div className="space-y-2 pt-1">
+            {/* 1. Primary 5-Second Snippet Button */}
+            <button
+              onClick={handleToggle5sSnippet}
+              className={`w-full py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-xs sm:text-sm transition-all cursor-pointer ${
+                activePlayback === '5s'
+                  ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25'
+              }`}
+            >
+              {activePlayback === '5s' ? (
+                <>
+                  <Square className="w-4 h-4 fill-white" />
+                  <span>5-Sekunden-Schnipsel stoppen</span>
+                  <span className="flex gap-1 items-center ml-2">
+                    <span className="w-1 h-3 bg-white animate-bounce" />
+                    <span className="w-1 h-4 bg-white animate-bounce delay-75" />
+                    <span className="w-1 h-2 bg-white animate-bounce delay-150" />
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>5-Sekunden-Schnipsel abspielen</span>
+                </>
+              )}
+            </button>
+
+            {/* 2. Secondary Normal Full Playback Button */}
+            <button
+              onClick={handleToggleFullPlay}
+              className={`w-full py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 font-medium text-xs transition-colors cursor-pointer border ${
+                activePlayback === 'full'
+                  ? 'bg-red-950/80 border-red-600/60 text-red-300'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+              }`}
+            >
+              {activePlayback === 'full' ? (
+                <>
+                  <Square className="w-3.5 h-3.5 fill-red-300" />
+                  <span>Normales Abspielen beenden</span>
+                </>
+              ) : (
+                <>
+                  <FastForward className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Nicht erkannt? Gesamten Beitrag normal abspielen</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Name Input & Suggested Chips */}
