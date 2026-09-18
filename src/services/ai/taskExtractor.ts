@@ -66,6 +66,7 @@ Antworte ausschließlich im JSON-Format mit dieser Struktur:
       try {
         const response = await client.chatCompletion({
           prompt,
+          model: client.getConfig().summaryModel || 'deepseek/deepseek-chat',
           system: 'Du bist ein erfahrener Projektmanager und agiler Coach. Du extrahierst verbindliche Aufgaben und Next Steps aus Meetings.',
           jsonResponse: true,
           temperature: 0.2

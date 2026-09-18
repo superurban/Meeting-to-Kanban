@@ -48,6 +48,7 @@ Antworte ausschließlich mit einem validen JSON-Array in folgendem Format:
 
     const response = await client.chatCompletion({
       prompt,
+      model: client.getConfig().audioModel || 'google/gemini-2.0-flash-001',
       system: 'Du bist ein hochpräziser Transkriptions- und Diarisierungs-Assistent.',
       audioData: {
         base64: base64Audio,

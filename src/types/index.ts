@@ -52,8 +52,9 @@ export interface Meeting {
 
 export interface OpenRouterConfig {
   apiKey: string;
-  model: string; // e.g. "google/gemini-2.0-flash-001" or "anthropic/claude-3.5-sonnet"
-  audioModel: string; // e.g. "google/gemini-2.0-flash-001"
+  model: string;
+  audioModel: string; // Model for audio transcription & multi-speaker diarization
+  summaryModel: string; // Model for semantic summarization & task extraction
   siteUrl: string;
   appName: string;
 }

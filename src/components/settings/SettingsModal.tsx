@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Key, CheckCircle, AlertCircle, RefreshCw, ExternalLink, Trash2, Cpu } from 'lucide-react';
+import { X, Key, CheckCircle, AlertCircle, RefreshCw, ExternalLink, Trash2, Mic, Sparkles } from 'lucide-react';
 import { OpenRouterConfig } from '../../types';
 import { OpenRouterClient } from '../../services/ai/openrouter';
 
@@ -11,10 +11,17 @@ interface SettingsModalProps {
   onResetData: () => void;
 }
 
-const AVAILABLE_MODELS = [
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Empfohlen - Audio & Schnell)', provider: 'Google' },
-  { id: 'google/gemini-1.5-pro', name: 'Gemini 1.5 Pro (Multimodal & Stark)', provider: 'Google' },
-  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (Präzise Aufgabenanalyse)', provider: 'Anthropic' },
+const AUDIO_MODELS = [
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Empfohlen: Schnelle Multi-Speaker Diarisierung)', provider: 'Google' },
+  { id: 'google/gemini-1.5-pro', name: 'Gemini 1.5 Pro (Multimodal mit großem Audio-Kontext)', provider: 'Google' },
+  { id: 'openai/gpt-4o-audio-preview', name: 'GPT-4o Audio Preview', provider: 'OpenAI' }
+];
+
+const SUMMARY_MODELS = [
+  { id: 'deepseek/deepseek-chat', name: 'DeepSeek-V3 / Flash (Favorit: Extrem präzise Aufgaben & kostengünstig)', provider: 'DeepSeek' },
+  { id: 'deepseek/deepseek-r1', name: 'DeepSeek-R1 (Tiefes Reasoning bei unklaren Aufgaben)', provider: 'DeepSeek' },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Ultra-schnell, 1M+ Token Kontext)', provider: 'Google' },
+  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (Höchste Sprach- & Analyse-Qualität)', provider: 'Anthropic' },
   { id: 'openai/gpt-4o', name: 'GPT-4o (Omni)', provider: 'OpenAI' }
 ];
 
@@ -26,7 +33,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onResetData
 }) => {
   const [apiKey, setApiKey] = useState(config.apiKey);
-  const [model, setModel] = useState(config.model || 'google/gemini-2.0-flash-001');
+  const [audioModel, setAudioModel] = useState(config.audioModel || 'google/gemini-2.0-flash-001');
+  const [summaryModel, setSummaryModel] = useState(config.summaryModel || 'deepseek/deepseek-chat');
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -45,7 +53,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const client = new OpenRouterClient({
         ...config,
         apiKey: apiKey.trim(),
-        model
+        model: summaryModel,
+        summaryModel
       });
 
       const res = await client.chatCompletion({
@@ -54,7 +63,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       });
 
       if (res.includes('OK') || res.length > 0) {
-        setTestResult({ success: true, message: 'Verbindung zu OpenRouter erfolgreich!' });
+        setTestResult({ success: true, message: `Verbindung zu OpenRouter erfolgreich (${summaryModel})!` });
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Verbindungsfehler';
@@ -69,19 +78,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onSave({
       ...config,
       apiKey: apiKey.trim(),
-      model,
-      audioModel: model
+      model: summaryModel,
+      audioModel,
+      summaryModel
     });
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <Key className="w-5 h-5 text-blue-400" />
-            <h2 className="text-base font-bold text-white">OpenRouter Einstellungen</h2>
+            <h2 className="text-base font-bold text-white">OpenRouter & KI-Modell Einstellungen</h2>
           </div>
           <button
             onClick={onClose}
@@ -116,27 +126,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-600"
             />
             <p className="text-[11px] text-slate-400 mt-1">
-              Wird sicher lokal in deinem Browser (LocalStorage) gespeichert.
+              Wird sicher lokal in deinem Browser (LocalStorage / IndexedDB) gespeichert.
             </p>
           </div>
 
-          {/* Model Selection */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-              <Cpu className="w-3.5 h-3.5 text-indigo-400" />
-              KI-Modell für Audio & Transkript-Analyse
+          {/* Audio Diarization Model Selection */}
+          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+              <Mic className="w-3.5 h-3.5 text-blue-400" />
+              1. Modell für Audio & Multi-Speaker Erkennung
             </label>
             <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={audioModel}
+              onChange={(e) => setAudioModel(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {AVAILABLE_MODELS.map((m) => (
+              {AUDIO_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
                 </option>
               ))}
             </select>
+            <p className="text-[11px] text-slate-400">
+              Verarbeitet das Roh-Audio direkt und trennt Stimmen anhand von Timbre, Pausen und Tonhöhe.
+            </p>
+          </div>
+
+          {/* Semantic Summarization & Kanban Model Selection */}
+          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              2. Modell für semantische Zusammenfassung & Kanban
+            </label>
+            <select
+              value={summaryModel}
+              onChange={(e) => setSummaryModel(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {SUMMARY_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-400">
+              Analysiert das Transkript, leitet Fälligkeiten ab und extrahiert saubere Action Items.
+            </p>
           </div>
 
           {/* Test connection */}
@@ -153,7 +188,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span>Verbindung wird getestet...</span>
                 </>
               ) : (
-                <span>API-Key testen</span>
+                <span>API-Key & Modell testen</span>
               )}
             </button>
 

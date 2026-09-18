@@ -11,6 +11,10 @@ export class OpenRouterClient {
     return Boolean(this.config.apiKey && this.config.apiKey.trim().length > 0);
   }
 
+  getConfig(): OpenRouterConfig {
+    return this.config;
+  }
+
   /**
    * Send a prompt with optional system instructions and JSON schema enforcement
    */
