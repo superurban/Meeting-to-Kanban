@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="50%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+    <linearGradient id="card" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#f1f5f9" stop-opacity="0.9" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg)" />
+  
+  <!-- Kanban Columns in Background -->
+  <rect x="80" y="90" width="100" height="240" rx="16" fill="rgba(255,255,255,0.15)" />
+  <rect x="206" y="90" width="100" height="280" rx="16" fill="rgba(255,255,255,0.2)" />
+  <rect x="332" y="90" width="100" height="200" rx="16" fill="rgba(255,255,255,0.15)" />
+
+  <!-- Kanban Cards -->
+  <rect x="92" y="110" width="76" height="48" rx="8" fill="url(#card)" />
+  <rect x="92" y="170" width="76" height="36" rx="8" fill="url(#card)" />
+  
+  <rect x="218" y="110" width="76" height="56" rx="8" fill="url(#card)" />
+  <rect x="218" y="178" width="76" height="42" rx="8" fill="url(#card)" />
+  
+  <rect x="344" y="110" width="76" height="40" rx="8" fill="url(#card)" />
+
+  <!-- Front Glowing Microphone Circle -->
+  <circle cx="256" cy="350" r="100" fill="#0f172a" stroke="#60a5fa" stroke-width="8" filter="drop-shadow(0 8px 24px rgba(0,0,0,0.5))" />
+  
+  <!-- Microphone Icon -->
+  <rect x="238" y="295" width="36" height="64" rx="18" fill="#38bdf8" />
+  <path d="M216 335 C216 360 296 360 296 335" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" fill="none" />
+  <line x1="256" y1="365" x2="256" y2="395" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" />
+  <line x1="236" y1="395" x2="276" y2="395" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" />
+</svg>
