@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Upload, Sparkles, Play, Info, AlertCircle, RefreshCw } from 'lucide-react';
+import { Mic, Square, Upload, Sparkles, Info, AlertCircle, RefreshCw } from 'lucide-react';
 import { AudioRecorder } from '../../services/audio/AudioRecorder';
 import { formatDuration } from '../../utils/dateUtils';
+import { ModelReasoningBox } from './ModelReasoningBox';
 
 interface MeetingRecorderProps {
   onRecordingComplete: (audioBlob: Blob, mimeType: string, durationSeconds: number, title: string) => Promise<void>;
@@ -10,6 +11,9 @@ interface MeetingRecorderProps {
   hasApiKey: boolean;
   isProcessing: boolean;
   processingStep: string;
+  reasoningLogs?: string[];
+  liveReasoningText?: string;
+  currentModelName?: string;
 }
 
 export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
@@ -18,7 +22,10 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   onOpenSettings,
   hasApiKey,
   isProcessing,
-  processingStep
+  processingStep,
+  reasoningLogs = [],
+  liveReasoningText = '',
+  currentModelName = 'Gemini 3.8 Flash'
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -223,12 +230,21 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
             </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-6 space-y-4">
-            <RefreshCw className="w-10 h-10 text-blue-400 animate-spin" />
+          <div className="flex flex-col items-center justify-center py-4 space-y-3 w-full max-w-xl">
+            <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
             <div>
-              <p className="text-base font-semibold text-white">{processingStep}</p>
-              <p className="text-xs text-slate-400 mt-1">Sprecher werden diarisiert & analysiert...</p>
+              <p className="text-sm font-semibold text-white">{processingStep}</p>
+              <p className="text-xs text-slate-400 mt-0.5">Sprecher werden diarisiert & analysiert...</p>
             </div>
+
+            {/* Live Model Reasoning & Progress Log Box */}
+            <ModelReasoningBox
+              modelName={currentModelName}
+              currentStep={processingStep}
+              reasoningLogs={reasoningLogs}
+              liveReasoningText={liveReasoningText}
+              isProcessing={isProcessing}
+            />
           </div>
         )}
 

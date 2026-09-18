@@ -24,6 +24,8 @@ export const App: React.FC = () => {
   // Processing & UI States
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
+  const [reasoningLogs, setReasoningLogs] = useState<string[]>([]);
+  const [liveReasoningText, setLiveReasoningText] = useState<string>('');
   const [isExtractingTasks, setIsExtractingTasks] = useState(false);
   const [clarificationRequest, setClarificationRequest] = useState<SpeakerClarificationRequest | null>(null);
   const [clarificationQueue, setClarificationQueue] = useState<SpeakerClarificationRequest[]>([]);
@@ -79,7 +81,9 @@ export const App: React.FC = () => {
     title: string
   ) => {
     setIsProcessing(true);
-    setProcessingStep('Transkribiere Audioaufnahme...');
+    setReasoningLogs([`[${new Date().toLocaleTimeString('de-DE')}] Starte Audio-Pipeline für "${title}" (${Math.round(durationSeconds)}s)`]);
+    setLiveReasoningText('');
+    setProcessingStep('Audio wird aufbereitet...');
 
     const client = new OpenRouterClient(config);
 
@@ -95,22 +99,55 @@ export const App: React.FC = () => {
     const meetingDate = new Date().toISOString();
 
     try {
-      // Real AI transcription of the user's audio
-      const segments = await TranscriptionService.transcribeAudio(audioBlob, mimeType, client);
+      // Real AI transcription of the user's audio with live reasoning stream
+      const segments = await TranscriptionService.transcribeAudio(
+        audioBlob,
+        mimeType,
+        client,
+        {
+          onProgressLog: (log) => {
+            setReasoningLogs((prev) => [...prev, `[${new Date().toLocaleTimeString('de-DE')}] ${log}`]);
+          },
+          onReasoningChunk: (chunk) => {
+            setLiveReasoningText((prev) => prev + chunk);
+          },
+          onContentChunk: (chunk) => {
+            setLiveReasoningText((prev) => prev + chunk);
+          }
+        }
+      );
 
       setProcessingStep('Analysiere Sprecher & Identitäten...');
+      setReasoningLogs((prev) => [
+        ...prev,
+        `[${new Date().toLocaleTimeString('de-DE')}] ${segments.length} Sprachabschnitte erkannt. Analysiere Sprecher und Namensmuster...`
+      ]);
+
       const { speakers, clarificationNeeded } = await SpeakerDeductionService.resolveSpeakers(
         segments,
         client.hasApiKey() ? client : undefined
       );
 
-      setProcessingStep('Extrahiere Aufgaben & Next Steps...');
+      setReasoningLogs((prev) => [
+        ...prev,
+        `[${new Date().toLocaleTimeString('de-DE')}] ${speakers.length} Sprecher zugeordnet (${clarificationNeeded.length} unklare Stimme(n) zur Klärung).`
+      ]);
+
+      setProcessingStep('Extrahiere Aufgaben & Next Steps mit DeepSeek...');
       const tasks = await TaskExtractorService.extractTasks(
         meetingId,
         meetingDate,
         segments,
         speakers,
-        client.hasApiKey() ? client : undefined
+        client.hasApiKey() ? client : undefined,
+        {
+          onProgressLog: (log) => {
+            setReasoningLogs((prev) => [...prev, `[${new Date().toLocaleTimeString('de-DE')}] ${log}`]);
+          },
+          onReasoningChunk: (chunk) => {
+            setLiveReasoningText((prev) => prev + chunk);
+          }
+        }
       );
 
       const newMeeting: Meeting = {
@@ -392,6 +429,9 @@ export const App: React.FC = () => {
             hasApiKey={Boolean(config.apiKey && config.apiKey.trim().length > 0)}
             isProcessing={isProcessing}
             processingStep={processingStep}
+            reasoningLogs={reasoningLogs}
+            liveReasoningText={liveReasoningText}
+            currentModelName={config.audioModel || 'Gemini 3.8 Flash'}
           />
         )}
 

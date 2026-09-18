@@ -11,7 +11,11 @@ export class TaskExtractorService {
     meetingDate: string,
     segments: TranscriptSegment[],
     speakers: Speaker[],
-    client?: OpenRouterClient
+    client?: OpenRouterClient,
+    callbacks?: {
+      onProgressLog?: (log: string) => void;
+      onReasoningChunk?: (chunk: string) => void;
+    }
   ): Promise<Task[]> {
     // Build speaker lookup map
     const speakerNameMap = new Map<string, string>();
@@ -31,6 +35,9 @@ export class TaskExtractorService {
       .join(', ');
 
     if (client && client.hasApiKey()) {
+      const summaryModel = client.getConfig().summaryModel || 'deepseek/deepseek-chat';
+      callbacks?.onProgressLog?.(`Extrahiere verbindliche Aufgaben mit ${summaryModel}...`);
+
       const prompt = `Analysiere folgendes Meeting-Transkript und erstelle eine präzise Aufgabenliste für ein Kanban-Board.
 
 Meeting-Datum: ${meetingDate}
@@ -66,13 +73,19 @@ Antworte ausschließlich im JSON-Format mit dieser Struktur:
       try {
         const response = await client.chatCompletion({
           prompt,
-          model: client.getConfig().summaryModel || 'deepseek/deepseek-chat',
+          model: summaryModel,
           system: 'Du bist ein erfahrener Projektmanager und agiler Coach. Du extrahierst verbindliche Aufgaben und Next Steps aus Meetings.',
-          jsonResponse: true,
-          temperature: 0.2
+          temperature: 0.2,
+          stream: true,
+          onReasoning: callbacks?.onReasoningChunk
         });
 
-        const parsed = JSON.parse(response);
+        let cleanResponse = response.trim();
+        if (cleanResponse.startsWith('```')) {
+          cleanResponse = cleanResponse.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '');
+        }
+
+        const parsed = JSON.parse(cleanResponse);
         const taskItems: Array<Record<string, unknown>> = Array.isArray(parsed)
           ? parsed
           : parsed.tasks || [];
