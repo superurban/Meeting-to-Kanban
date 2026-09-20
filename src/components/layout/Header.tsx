@@ -3,11 +3,8 @@ import {
   Mic, 
   Settings, 
   Plus, 
-  FolderOpen, 
-  Trash2, 
   Sun, 
-  Moon, 
-  TableProperties 
+  Moon 
 } from 'lucide-react';
 import { Meeting } from '../../types';
 
@@ -68,59 +65,17 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Meeting Switcher & Actions */}
+        {/* Actions */}
         <div className="flex items-center gap-2">
-          {meetings.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              {/* Meeting Dropdown Selector */}
-              <div className="flex items-center gap-1.5">
-                <FolderOpen className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-                <select
-                  aria-label="Meeting auswählen"
-                  className="input-saas text-xs py-1.5 px-2.5 w-[190px] sm:w-[280px] md:w-[340px] truncate font-medium cursor-pointer"
-                  value={currentMeeting?.id || ''}
-                  onChange={(e) => {
-                    if (e.target.value === '__manage__') {
-                      onOpenMeetingsManager();
-                    } else {
-                      onSelectMeeting(e.target.value);
-                    }
-                  }}
-                >
-                  {meetings.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.title || 'Unbenanntes Meeting'}
-                    </option>
-                  ))}
-                  <option disabled value="">──────────</option>
-                  <option value="__manage__">📁 Alle Meetings verwalten...</option>
-                </select>
-              </div>
-
-              {/* Direct Delete Active Meeting Button */}
-              {currentMeeting && (
-                <button
-                  type="button"
-                  onClick={onRequestDeleteCurrentMeeting}
-                  className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-red-600 hover:bg-[var(--status-off-track-bg)] border border-transparent hover:border-[var(--status-off-track-border)] transition-colors cursor-pointer"
-                  title={`Aktuelles Meeting "${currentMeeting.title}" löschen`}
-                  aria-label="Aktuelles Meeting löschen"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          )}
-
           {/* New Meeting Primary Button */}
           <button
             type="button"
             onClick={onNewMeeting}
-            className="btn-primary text-xs"
+            className="btn-primary text-xs flex items-center gap-1.5"
             title="Neues Meeting aufnehmen"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Neues Meeting</span>
+            <span>Neues Meeting</span>
           </button>
 
           {/* Theme Toggle Button (Light/Dark Mode) */}

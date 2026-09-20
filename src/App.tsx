@@ -675,7 +675,7 @@ export const App: React.FC = () => {
         onToggleTheme={handleToggleTheme}
       />
 
-      {/* Navigation (Desktop Tabs & Mobile Bottom Nav) */}
+      {/* Navigation (Desktop Tabs with Recordings Dropdown & Mobile Bottom Nav) */}
       <Navigation
         currentTab={activeTab}
         onSelectTab={setActiveTab}
@@ -683,7 +683,12 @@ export const App: React.FC = () => {
         speakerCount={currentMeeting?.speakers.length || 0}
         segmentCount={currentMeeting?.segments.length || 0}
         taskCount={currentMeeting?.tasks.length || 0}
-        meetingCount={meetings.length}
+        meetings={meetings}
+        currentMeeting={currentMeeting}
+        onSelectMeeting={handleSelectMeeting}
+        onNewMeeting={handleNewMeeting}
+        onOpenMeetingsManager={() => setActiveTab('meetings')}
+        onRequestDeleteCurrentMeeting={handleRequestDeleteCurrentMeeting}
       />
 
       {/* Main Content Areas */}
