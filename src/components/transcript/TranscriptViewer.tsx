@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users } from 'lucide-react';
+import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users, GitMerge } from 'lucide-react';
 import { Meeting, TranscriptSegment, Speaker } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
 import { formatTimestamp } from '../../utils/dateUtils';
@@ -12,6 +12,7 @@ interface TranscriptViewerProps {
   onExtractTasks: () => void;
   isExtractingTasks: boolean;
   onNavigateTab?: (tab: AppTab) => void;
+  onMergeSpeakers?: (sourceSpeakerId: string, targetSpeakerId: string) => void;
 }
 
 export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
@@ -20,7 +21,8 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   onRequestClarification,
   onExtractTasks,
   isExtractingTasks,
-  onNavigateTab
+  onNavigateTab,
+  onMergeSpeakers
 }) => {
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
   const [playingSpeakerId, setPlayingSpeakerId] = useState<string | null>(null);
@@ -169,6 +171,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                           <input
                             type="text"
                             autoFocus
+                            list={`speaker-options-${spk.id}`}
                             value={editNameVal}
                             onChange={(e) => setEditNameVal(e.target.value)}
                             onKeyDown={(e) => {
@@ -179,8 +182,16 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                                 setEditingSpeakerId(null);
                               }
                             }}
+                            placeholder="Name..."
                             className="input-saas py-0.5 px-1.5 text-xs w-full"
                           />
+                          <datalist id={`speaker-options-${spk.id}`}>
+                            {meeting.speakers
+                              .filter((o) => o.id !== spk.id)
+                              .map((o) => (
+                                <option key={o.id} value={o.assignedName || o.label} />
+                              ))}
+                          </datalist>
                           <button
                             type="button"
                             onClick={() => {
@@ -194,7 +205,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                         </div>
                       ) : (
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1 flex-wrap">
                             <span className="font-medium text-[var(--text-primary)] truncate">
                               {spk.assignedName || spk.label}
                             </span>
@@ -205,10 +216,39 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                                 setEditNameVal(spk.assignedName || spk.label);
                               }}
                               className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-0.5 rounded cursor-pointer"
-                              title="Name bearbeiten"
+                              title="Name bearbeiten (Gleicher Name führt Stimmen zusammen)"
                             >
                               <Edit2 className="w-2.5 h-2.5" />
                             </button>
+
+                            {/* Merge option with other speakers */}
+                            {meeting.speakers.filter((o) => o.id !== spk.id).length > 0 && (
+                              <select
+                                aria-label="Mit Sprecher zusammenführen"
+                                title="Diese Stimme einer anderen Person zuordnen"
+                                className="text-[10px] py-0 px-1 rounded border bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                                style={{ borderColor: 'var(--border-color)' }}
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    if (onMergeSpeakers) {
+                                      onMergeSpeakers(spk.id, e.target.value);
+                                    } else {
+                                      onUpdateSpeakerName(spk.id, e.target.value);
+                                    }
+                                  }
+                                }}
+                              >
+                                <option value="" disabled>Zusammenführen...</option>
+                                {meeting.speakers
+                                  .filter((o) => o.id !== spk.id)
+                                  .map((o) => (
+                                    <option key={o.id} value={o.id}>
+                                      → Mit {o.assignedName || o.label}
+                                    </option>
+                                  ))}
+                              </select>
+                            )}
                           </div>
                           <div className="text-[10px] text-[var(--text-muted)]">
                             <span>{segCount} {segCount === 1 ? 'Abschnitt' : 'Abschnitte'}</span>

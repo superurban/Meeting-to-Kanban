@@ -20,13 +20,15 @@ interface SpeakersViewerProps {
   onUpdateSpeakerName: (speakerId: string, newName: string) => void;
   onRequestClarification: (speakerId: string) => void;
   onNavigateTab: (tab: AppTab) => void;
+  onMergeSpeakers?: (sourceSpeakerId: string, targetSpeakerId: string) => void;
 }
 
 export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
   meeting,
   onUpdateSpeakerName,
   onRequestClarification,
-  onNavigateTab
+  onNavigateTab,
+  onMergeSpeakers
 }) => {
   const [editingSpeakerId, setEditingSpeakerId] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
@@ -293,48 +295,77 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
                 )}
               </div>
 
-              {/* Audio Snippet Action Buttons */}
+              {/* Audio Snippet Action Buttons & Merge Option */}
               <div 
-                className="pt-2.5 border-t flex items-center justify-between gap-2 mt-2"
+                className="pt-2.5 border-t flex flex-wrap items-center justify-between gap-2 mt-2"
                 style={{ borderColor: 'var(--border-color)' }}
               >
-                {/* 5-second Audio Snippet Player */}
-                <button
-                  onClick={() => handlePlay5sSnippet(speaker, bestSegment)}
-                  className="btn-primary text-xs py-1 px-3"
-                  title="Spielt exakt 5 Sekunden aus dem Sprachabschnitt ab"
-                >
-                  {is5sPlaying ? (
-                    <>
-                      <Square className="w-3 h-3 fill-current" />
-                      <span>5s Stopp</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3 h-3 fill-current" />
-                      <span>5s Hörprobe</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* 5-second Audio Snippet Player */}
+                  <button
+                    onClick={() => handlePlay5sSnippet(speaker, bestSegment)}
+                    className="btn-primary text-xs py-1 px-3"
+                    title="Spielt exakt 5 Sekunden aus dem Sprachabschnitt ab"
+                  >
+                    {is5sPlaying ? (
+                      <>
+                        <Square className="w-3 h-3 fill-current" />
+                        <span>5s Stopp</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3 h-3 fill-current" />
+                        <span>5s Hörprobe</span>
+                      </>
+                    )}
+                  </button>
 
-                {/* Full playback fallback */}
-                <button
-                  onClick={() => handlePlayFullSegment(speaker, bestSegment)}
-                  className="btn-secondary text-xs py-1 px-2.5"
-                  title="Ganzen Abschnitt ohne 5s-Limit abspielen"
-                >
-                  {isFullPlaying ? (
-                    <>
-                      <Square className="w-3 h-3 fill-current text-red-500" />
-                      <span>Stopp</span>
-                    </>
-                  ) : (
-                    <>
-                      <Volume2 className="w-3 h-3" />
-                      <span>Ganze Sequenz</span>
-                    </>
-                  )}
-                </button>
+                  {/* Full playback fallback */}
+                  <button
+                    onClick={() => handlePlayFullSegment(speaker, bestSegment)}
+                    className="btn-secondary text-xs py-1 px-2.5"
+                    title="Ganzen Abschnitt ohne 5s-Limit abspielen"
+                  >
+                    {isFullPlaying ? (
+                      <>
+                        <Square className="w-3 h-3 fill-current text-red-500" />
+                        <span>Stopp</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3 h-3" />
+                        <span>Ganze Sequenz</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Merge with other speaker dropdown */}
+                {meeting.speakers.length > 1 && (
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        if (onMergeSpeakers) {
+                          onMergeSpeakers(speaker.id, e.target.value);
+                        } else {
+                          onUpdateSpeakerName(speaker.id, e.target.value);
+                        }
+                      }
+                    }}
+                    className="input-saas text-xs py-1 px-2 cursor-pointer max-w-[220px] truncate"
+                    title="Diese Stimme einer anderen Person zuordnen (Zusammenführen)"
+                  >
+                    <option value="" disabled>Mit Stimme zusammenführen...</option>
+                    {meeting.speakers
+                      .filter((other) => other.id !== speaker.id)
+                      .map((other) => (
+                        <option key={other.id} value={other.id}>
+                          → Mit {other.assignedName || other.label}
+                        </option>
+                      ))}
+                  </select>
+                )}
               </div>
             </div>
           );

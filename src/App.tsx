@@ -325,17 +325,102 @@ export const App: React.FC = () => {
   };
 
   /**
-   * Assign a name to an unidentified speaker (from Snippet Clarification Modal)
+   * Merge two speakers into one person:
+   * Reassigns all segments and tasks from sourceSpeakerId to targetSpeakerId,
+   * then removes sourceSpeakerId from meeting.speakers.
+   */
+  const handleMergeSpeakers = async (sourceSpeakerId: string, targetSpeakerId: string) => {
+    if (!currentMeeting || sourceSpeakerId === targetSpeakerId) return;
+
+    const sourceSpeaker = currentMeeting.speakers.find((s) => s.id === sourceSpeakerId);
+    const targetSpeaker = currentMeeting.speakers.find((s) => s.id === targetSpeakerId);
+    if (!sourceSpeaker || !targetSpeaker) return;
+
+    const targetName = targetSpeaker.assignedName || targetSpeaker.label;
+    const sourceLabel = sourceSpeaker.assignedName || sourceSpeaker.label;
+
+    // 1. Reassign all segments of source speaker to target speaker
+    const updatedSegments = currentMeeting.segments.map((seg) => {
+      if (seg.speakerId === sourceSpeakerId) {
+        return {
+          ...seg,
+          speakerId: targetSpeakerId,
+          speakerLabel: targetName
+        };
+      }
+      return seg;
+    });
+
+    // 2. Remove source speaker and mark target speaker with merged note
+    const updatedSpeakers = currentMeeting.speakers
+      .filter((s) => s.id !== sourceSpeakerId)
+      .map((s) => {
+        if (s.id === targetSpeakerId) {
+          return {
+            ...s,
+            confidence: 1.0,
+            evidence: s.evidence 
+              ? `${s.evidence} • Zusammengeführt mit ${sourceLabel}`
+              : `Zusammengeführt mit ${sourceLabel}`
+          };
+        }
+        return s;
+      });
+
+    // 3. Reassign tasks from source to target
+    const updatedTasks = currentMeeting.tasks.map((t) => {
+      if (t.assignee === sourceLabel || t.assignee === sourceSpeakerId) {
+        return { ...t, assignee: targetName };
+      }
+      return t;
+    });
+
+    const updatedMeeting: Meeting = {
+      ...currentMeeting,
+      speakers: updatedSpeakers,
+      segments: updatedSegments,
+      tasks: updatedTasks
+    };
+
+    await AudioStorage.saveMeeting(updatedMeeting);
+    setMeetings((prev) => prev.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m)));
+
+    // Clean up clarification queue if source was in it
+    const remainingQueue = clarificationQueue.filter((q) => q.speakerId !== sourceSpeakerId);
+    setClarificationQueue(remainingQueue);
+    if (remainingQueue.length > 0) {
+      setClarificationRequest(remainingQueue[0]);
+    } else {
+      setClarificationRequest(null);
+    }
+  };
+
+  /**
+   * Assign a name to an unidentified speaker (from Snippet Clarification Modal or inline edit)
+   * If the name matches an existing speaker, automatically merges them!
    */
   const handleAssignSpeakerName = async (speakerId: string, assignedName: string) => {
     if (!currentMeeting) return;
+    const cleanName = assignedName.trim();
+    if (!cleanName) return;
+
+    // Check if another existing speaker has this exact same name (case-insensitive)
+    const existingSameNameSpeaker = currentMeeting.speakers.find(
+      (s) => s.id !== speakerId && (s.assignedName || s.label).trim().toLowerCase() === cleanName.toLowerCase()
+    );
+
+    if (existingSameNameSpeaker) {
+      // Auto-merge speakerId into the existing speaker!
+      await handleMergeSpeakers(speakerId, existingSameNameSpeaker.id);
+      return;
+    }
 
     // 1. Update speakers list
     const updatedSpeakers = currentMeeting.speakers.map((s) => {
       if (s.id === speakerId) {
         return {
           ...s,
-          assignedName,
+          assignedName: cleanName,
           confidence: 1.0,
           evidence: 'Manuell nach Audio-Schnipsel-Wiedergabe bestätigt'
         };
@@ -348,7 +433,7 @@ export const App: React.FC = () => {
       if (seg.speakerId === speakerId) {
         return {
           ...seg,
-          speakerLabel: assignedName
+          speakerLabel: cleanName
         };
       }
       return seg;
@@ -359,7 +444,7 @@ export const App: React.FC = () => {
     const oldLabel = oldSpeaker?.assignedName || oldSpeaker?.label || speakerId;
     const updatedTasks = currentMeeting.tasks.map((t) => {
       if (t.assignee === oldLabel || t.assignee === speakerId) {
-        return { ...t, assignee: assignedName };
+        return { ...t, assignee: cleanName };
       }
       return t;
     });
@@ -542,6 +627,7 @@ export const App: React.FC = () => {
           <TranscriptViewer
             meeting={currentMeeting}
             onUpdateSpeakerName={(id, name) => handleAssignSpeakerName(id, name)}
+            onMergeSpeakers={handleMergeSpeakers}
             onRequestClarification={handleRequestClarification}
             onExtractTasks={handleExtractTasksAgain}
             isExtractingTasks={isExtractingTasks}
@@ -565,6 +651,7 @@ export const App: React.FC = () => {
           <SpeakersViewer
             meeting={currentMeeting}
             onUpdateSpeakerName={(id, name) => handleAssignSpeakerName(id, name)}
+            onMergeSpeakers={handleMergeSpeakers}
             onRequestClarification={handleRequestClarification}
             onNavigateTab={setActiveTab}
           />

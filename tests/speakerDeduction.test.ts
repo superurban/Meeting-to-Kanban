@@ -147,4 +147,50 @@ describe('Speaker Deduction & Date Utils', () => {
     expect(remaining[0].id).toBe('m2');
     expect(remaining.find((m) => m.id === 'm1')).toBeUndefined();
   });
+
+  it('Merging speakers correctly reassigns segments and tasks to target speaker and removes source speaker', () => {
+    const speakers = [
+      { id: 'spk_thorben', label: 'Sprecher 2', assignedName: 'Thorben', confidence: 1.0, color: '#10b981' },
+      { id: 'spk_don', label: 'Sprecher 4', assignedName: 'Don', confidence: 0.7, color: '#8b5cf6' }
+    ];
+
+    const segments = [
+      { id: 's1', speakerId: 'spk_thorben', speakerLabel: 'Thorben', startTime: 0, endTime: 4, text: 'Hallo zusammen.' },
+      { id: 's2', speakerId: 'spk_don', speakerLabel: 'Don', startTime: 5, endTime: 8, text: 'Hier ist auch noch ein Punkt.' }
+    ];
+
+    const tasks = [
+      { id: 't1', meetingId: 'm1', title: 'Task 1', assignee: 'Don', status: 'todo' as const, priority: 'medium' as const, columnId: 'todo' },
+      { id: 't2', meetingId: 'm1', title: 'Task 2', assignee: 'Thorben', status: 'done' as const, priority: 'high' as const, columnId: 'done' }
+    ];
+
+    // Merge spk_don into spk_thorben
+    const sourceId = 'spk_don';
+    const targetId = 'spk_thorben';
+    const targetSpeaker = speakers.find(s => s.id === targetId)!;
+
+    const mergedSegments = segments.map(seg => {
+      if (seg.speakerId === sourceId) {
+        return { ...seg, speakerId: targetId, speakerLabel: targetSpeaker.assignedName };
+      }
+      return seg;
+    });
+
+    const mergedSpeakers = speakers
+      .filter(s => s.id !== sourceId)
+      .map(s => s.id === targetId ? { ...s, evidence: 'Zusammengeführt' } : s);
+
+    const mergedTasks = tasks.map(t => {
+      if (t.assignee === 'Don') {
+        return { ...t, assignee: targetSpeaker.assignedName };
+      }
+      return t;
+    });
+
+    expect(mergedSpeakers.length).toBe(1);
+    expect(mergedSpeakers[0].assignedName).toBe('Thorben');
+    expect(mergedSegments.every(seg => seg.speakerId === 'spk_thorben')).toBe(true);
+    expect(mergedSegments.every(seg => seg.speakerLabel === 'Thorben')).toBe(true);
+    expect(mergedTasks.every(t => t.assignee === 'Thorben')).toBe(true);
+  });
 });

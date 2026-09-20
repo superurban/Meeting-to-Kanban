@@ -47,11 +47,16 @@ export class TranscriptionService {
 
     const base64Audio = await this.blobToBase64(processedBlob);
 
-    const prompt = `Transkribiere diese Audioaufnahme eines Meetings.
+    const prompt = `Transkribiere diese Audioaufnahme eines Meetings mit präziser Sprecher-Diarisierung.
 Aufgaben:
 1. Erkenne unterschiedliche Sprecher und weise ihnen fortlaufende Kennungen zu (z.B. speaker_1, speaker_2, speaker_3).
 2. Erfasse präzise Zeitstempel für Start- und Endzeit jedes Sprechbeitrags in Sekunden.
 3. Transkribiere den tatsächlich gesprochenen Text im genauen Originalwortlaut (KEINE erfundenen Dialoge!).
+
+KRITISCHE REGEL ZUR SPRECHER-KONSISTENZ (STIMMEN-CLUSTER):
+- Dieselbe Person / Stimme MUSS über das gesamte Audio hinweg ausnahmslos dieselbe speakerId behalten!
+- Teile dieselbe Person auf KEINEN Fall in unterschiedliche Sprecher auf, auch wenn Pausen, Unterbrechungen oder Themenwechsel vorliegen.
+- Achte konsequent auf Tonhöhe, Timbre, Mikrofon-Distanz, Sprachrhythmus und Klangcharakteristik, um wiederkehrende Stimmen verlässlich derselben speakerId zuzuordnen.
 
 Antworte ausschließlich mit einem validen JSON-Array in folgendem Format:
 [
