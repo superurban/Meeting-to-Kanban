@@ -7,8 +7,7 @@ export function formatDuration(seconds: number): string {
 export function formatTimestamp(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
-  const ms = Math.floor((seconds % 1) * 10);
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms}`;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 export function formatDate(isoDateString: string): string {
