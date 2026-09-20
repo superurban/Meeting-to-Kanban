@@ -59,9 +59,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // Collect unique assignees for filter
   const assignees = Array.from(new Set(tasks.map((t) => t.assignee).filter(Boolean)));
 
-  const unassignedSpeakers = speakers.filter(
-    (s) => !s.assignedName || s.confidence < 0.8
-  );
+
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData('text/plain', taskId);
@@ -239,60 +237,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       </div>
 
-      {/* Unassigned Speakers Notification Banner */}
-      {unassignedSpeakers.length > 0 && (
-        <div 
-          className="p-3.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in"
-          style={{
-            backgroundColor: 'var(--status-at-risk-bg)',
-            borderColor: 'var(--status-at-risk-border)'
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div 
-              className="p-1.5 rounded-md shrink-0"
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                color: 'var(--status-at-risk-text)'
-              }}
-            >
-              <Volume2 className="w-4 h-4" />
-            </div>
-            <div>
-              <p 
-                className="text-xs font-semibold"
-                style={{ color: 'var(--status-at-risk-text)' }}
-              >
-                {unassignedSpeakers.length} {unassignedSpeakers.length === 1 ? 'Sprecher konnte' : 'Sprecher konnten'} noch keinem Namen zugeordnet werden
-              </p>
-              <p 
-                className="text-[11px] opacity-80 mt-0.5"
-                style={{ color: 'var(--status-at-risk-text)' }}
-              >
-                Spiele die 5s-Hörprobe ab, um die Stimme schnell einer Person zuzuweisen.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {onNavigateTab && (
-              <button
-                onClick={() => onNavigateTab('speakers')}
-                className="btn-secondary text-xs py-1 px-2.5 shrink-0"
-              >
-                Zu den Sprechern
-              </button>
-            )}
-            {onRequestClarification && (
-              <button
-                onClick={() => onRequestClarification(unassignedSpeakers[0].id)}
-                className="btn-primary text-xs py-1 px-2.5 shrink-0"
-              >
-                5s-Hörprobe starten
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+
 
       {/* Task Alert Message (e.g. from pipeline extraction) */}
       {taskAlertMessage && (

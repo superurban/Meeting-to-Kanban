@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users, GitMerge, Clock, MessageSquare, RefreshCw, Check, Mic, Plus } from 'lucide-react';
+import { Play, Square, Sparkles, Volume2, Edit2, Users, GitMerge, Clock, MessageSquare, RefreshCw, Check, Mic, Plus } from 'lucide-react';
 import { Meeting, TranscriptSegment, Speaker, MeetingJob } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
 import { formatTimestamp, formatDuration } from '../../utils/dateUtils';
@@ -170,10 +170,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
     setHoveredSegmentId(null);
   };
 
-  // Find unassigned speakers
-  const unassignedSpeakers = meeting.speakers.filter(
-    (s) => !s.assignedName || s.confidence < 0.8
-  );
+
 
   const handlePlaySpeaker5s = (spk: Speaker) => {
     if (playingSpeakerId === spk.id) {
@@ -503,54 +500,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
         )}
       </div>
 
-      {/* Unassigned Speakers Clarification Banner */}
-      {unassignedSpeakers.length > 0 && (
-        <div 
-          className="p-3.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-          style={{
-            backgroundColor: 'var(--status-at-risk-bg)',
-            borderColor: 'var(--status-at-risk-border)'
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <div 
-              className="p-1.5 rounded-md shrink-0"
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                color: 'var(--status-at-risk-text)'
-              }}
-            >
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 
-                className="text-xs font-semibold"
-                style={{ color: 'var(--status-at-risk-text)' }}
-              >
-                {unassignedSpeakers.length} Sprecher ohne Klarnamen
-              </h3>
-              <p 
-                className="text-[11px] opacity-80 mt-0.5"
-                style={{ color: 'var(--status-at-risk-text)' }}
-              >
-                Spiele einen Tonschnipsel ab, um die Stimmen zuzuordnen:
-              </p>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {unassignedSpeakers.map((spk) => (
-                  <button
-                    key={spk.id}
-                    onClick={() => onRequestClarification(spk.id)}
-                    className="btn-secondary text-[11px] py-0.5 px-2"
-                  >
-                    <Volume2 className="w-3 h-3" />
-                    <span>{spk.assignedName || spk.label} zuweisen</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* 1. Zeitleiste der Aufnahme (Timeline Scrubber mit Minuten, Sprecher-Markern, Hover & Klick) */}
       <div 
