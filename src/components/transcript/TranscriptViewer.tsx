@@ -146,7 +146,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
             className="btn-primary text-xs shrink-0"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>{isExtractingTasks ? 'Analysiere Next Steps...' : 'Kanban-Tasks generieren'}</span>
+            <span>{isExtractingTasks ? 'Analysiere Next Steps...' : 'Tasks erstellen'}</span>
           </button>
         </div>
 
