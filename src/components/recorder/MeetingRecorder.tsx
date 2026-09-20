@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Upload, Sparkles, Info, AlertCircle, RefreshCw } from 'lucide-react';
+import { Mic, Square, AlertCircle, RefreshCw, FileText } from 'lucide-react';
 import { AudioRecorder } from '../../services/audio/AudioRecorder';
 import { formatDuration } from '../../utils/dateUtils';
 import { ModelReasoningBox } from './ModelReasoningBox';
 
 interface MeetingRecorderProps {
   onRecordingComplete: (audioBlob: Blob, mimeType: string, durationSeconds: number, title: string) => Promise<void>;
-  onLoadDemo: () => Promise<void>;
+  onLoadDemo?: () => Promise<void>;
   onOpenSettings: () => void;
   hasApiKey: boolean;
   isProcessing: boolean;
@@ -18,7 +18,6 @@ interface MeetingRecorderProps {
 
 export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   onRecordingComplete,
-  onLoadDemo,
   onOpenSettings,
   hasApiKey,
   isProcessing,
@@ -32,9 +31,16 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   const [meetingTitle, setMeetingTitle] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Query title after recording
+  const [pendingAudio, setPendingAudio] = useState<{
+    blob: Blob;
+    mimeType: string;
+    durationSeconds: number;
+  } | null>(null);
+  const [showTitleModal, setShowTitleModal] = useState(false);
+
   const recorderRef = useRef<AudioRecorder | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     return () => {
@@ -44,7 +50,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     };
   }, []);
 
-  const drawWaveform = (frequencyData: Uint8Array, volume: number) => {
+  const drawWaveform = (frequencyData: Uint8Array, _volume: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -104,8 +110,14 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       setIsRecording(false);
       setDuration(0);
 
-      const title = meetingTitle.trim() || `Meeting vom ${new Date().toLocaleDateString('de-DE')}`;
-      await onRecordingComplete(blob, mimeType, durationSeconds, title);
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+      const defaultTitle = `Meeting vom ${dateStr}, ${timeStr}`;
+
+      setMeetingTitle(defaultTitle);
+      setPendingAudio({ blob, mimeType, durationSeconds });
+      setShowTitleModal(true);
     } catch (err) {
       console.error('Fehler beim Stoppen:', err);
       setErrorMsg('Fehler beim Beenden der Aufnahme.');
@@ -113,27 +125,23 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleConfirmTitle = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!pendingAudio) return;
 
-    setErrorMsg(null);
-    const title = meetingTitle.trim() || file.name.replace(/\.[^/.]+$/, '');
+    const title = meetingTitle.trim() || `Meeting vom ${new Date().toLocaleDateString('de-DE')}`;
+    const audio = pendingAudio;
+    setPendingAudio(null);
+    setShowTitleModal(false);
+    setMeetingTitle('');
 
-    const audio = new Audio();
-    const objectUrl = URL.createObjectURL(file);
-    audio.src = objectUrl;
+    await onRecordingComplete(audio.blob, audio.mimeType, audio.durationSeconds, title);
+  };
 
-    audio.onloadedmetadata = async () => {
-      const durationSeconds = audio.duration || 60;
-      URL.revokeObjectURL(objectUrl);
-      await onRecordingComplete(file, file.type || 'audio/webm', durationSeconds, title);
-    };
-
-    audio.onerror = async () => {
-      URL.revokeObjectURL(objectUrl);
-      await onRecordingComplete(file, file.type || 'audio/webm', 60, title);
-    };
+  const handleCancelTitle = () => {
+    setPendingAudio(null);
+    setShowTitleModal(false);
+    setMeetingTitle('');
   };
 
   return (
@@ -165,27 +173,6 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
           </button>
         </div>
       )}
-
-      {/* Title Input Card */}
-      <div 
-        className="p-4 rounded-lg border shadow-[var(--shadow-subtle)]"
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          borderColor: 'var(--border-color)'
-        }}
-      >
-        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-          Meeting-Bezeichnung
-        </label>
-        <input
-          type="text"
-          placeholder="z.B. Sprint Planning, Projekt-Sync, Board Meeting..."
-          value={meetingTitle}
-          onChange={(e) => setMeetingTitle(e.target.value)}
-          disabled={isRecording || isProcessing}
-          className="input-saas w-full"
-        />
-      </div>
 
       {/* Main Recording Console */}
       <div 
@@ -238,9 +225,11 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
                 <span>Aufnahme stoppen</span>
               </button>
             )}
-            <p className="mt-3 text-xs text-[var(--text-muted)]">
-              {isRecording ? 'Aufnahme läuft – Klicke zum Beenden' : 'HTML5 MediaRecorder & 16kHz PCM WAV'}
-            </p>
+            {isRecording && (
+              <p className="mt-3 text-xs text-[var(--text-muted)] animate-pulse">
+                Aufnahme läuft – Klicke zum Beenden
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-2 space-y-2.5 w-full max-w-xl">
@@ -270,102 +259,68 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
         )}
       </div>
 
-      {/* Alternative Options: Upload & Demo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        {/* Upload Audio File */}
-        <div 
-          className="p-4 rounded-lg border shadow-[var(--shadow-subtle)] flex flex-col justify-between"
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            borderColor: 'var(--border-color)'
-          }}
-        >
-          <div className="flex items-start gap-3 mb-3">
-            <div 
-              className="p-2 rounded-md shrink-0"
-              style={{
-                backgroundColor: 'var(--bg-subtle)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-color)'
-              }}
-            >
-              <Upload className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-xs font-semibold text-[var(--text-primary)]">Audio-Datei importieren</h3>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                WebM, MP3, WAV, M4A & AAC
-              </p>
-            </div>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/*"
-            className="hidden"
-            onChange={handleFileUpload}
-            disabled={isRecording || isProcessing}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isRecording || isProcessing}
-            className="btn-secondary text-xs w-full"
+      {/* Query Meeting Title Modal after Recording */}
+      {showTitleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div 
+            className="w-full max-w-md p-5 rounded-xl border shadow-[var(--shadow-modal)] animate-in zoom-in-95 duration-150"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-color)'
+            }}
           >
-            Datei auswählen
-          </button>
-        </div>
-
-        {/* Demo Meeting Loader */}
-        <div 
-          className="p-4 rounded-lg border shadow-[var(--shadow-subtle)] flex flex-col justify-between"
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            borderColor: 'var(--border-color)'
-          }}
-        >
-          <div className="flex items-start gap-3 mb-3">
             <div 
-              className="p-2 rounded-md shrink-0"
-              style={{
-                backgroundColor: 'var(--bg-subtle)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-color)'
-              }}
+              className="flex items-center justify-between pb-3 mb-3 border-b"
+              style={{ borderColor: 'var(--border-color)' }}
             >
-              <Sparkles className="w-4 h-4" />
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                  Meeting-Bezeichnung festlegen
+                </h3>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xs font-semibold text-[var(--text-primary)]">Beispiel-Meeting laden</h3>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                Sprint Planning mit Florian, Sarah & Alex
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onLoadDemo}
-            disabled={isRecording || isProcessing}
-            className="btn-primary text-xs w-full"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Demo-Meeting laden</span>
-          </button>
-        </div>
-      </div>
 
-      {/* Info Notice */}
-      <div 
-        className="flex items-start gap-2.5 p-3 rounded-md border text-xs"
-        style={{
-          backgroundColor: 'var(--bg-subtle)',
-          borderColor: 'var(--border-color)',
-          color: 'var(--text-secondary)'
-        }}
-      >
-        <Info className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" />
-        <p>
-          <strong>Executive Diarisierung:</strong> Personen, die namentlich angesprochen werden und antworten, werden automatisch im Transkript identifiziert. Bei unklaren Stimmen fragt die App dich mit einem präzisen 5s-Tonschnipsel.
-        </p>
-      </div>
+            <form onSubmit={handleConfirmTitle} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">
+                  Wie soll dieses Meeting heißen?
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={meetingTitle}
+                  onChange={(e) => setMeetingTitle(e.target.value)}
+                  placeholder="z.B. Sprint Planning, Strategie-Meeting, Review..."
+                  className="input-saas w-full text-sm py-2"
+                />
+                <p className="text-[11px] text-[var(--text-muted)] mt-1.5">
+                  Anschließend analysiert die KI die Sprachaufnahme und extrahiert Aufgaben für dein Kanban Board.
+                </p>
+              </div>
+
+              <div 
+                className="flex items-center justify-end gap-2 pt-3 border-t"
+                style={{ borderColor: 'var(--border-color)' }}
+              >
+                <button
+                  type="button"
+                  onClick={handleCancelTitle}
+                  className="btn-secondary text-xs"
+                >
+                  Aufnahme verwerfen
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary text-xs"
+                >
+                  Weiter zur KI-Verarbeitung
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

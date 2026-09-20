@@ -8,7 +8,6 @@ import { TaskExtractorService } from './services/ai/taskExtractor';
 
 import { Header } from './components/layout/Header';
 import { Navigation, AppTab } from './components/layout/Navigation';
-import { KpiRow } from './components/dashboard/KpiRow';
 import { MeetingRecorder } from './components/recorder/MeetingRecorder';
 import { TranscriptViewer } from './components/transcript/TranscriptViewer';
 import { SpeakersViewer } from './components/speakers/SpeakersViewer';
@@ -521,12 +520,6 @@ export const App: React.FC = () => {
         segmentCount={currentMeeting?.segments.length || 0}
         taskCount={currentMeeting?.tasks.length || 0}
         meetingCount={meetings.length}
-      />
-
-      {/* Executive KPI Cards Row (Always visible for strategic overview) */}
-      <KpiRow 
-        meetings={meetings}
-        currentMeeting={currentMeeting}
       />
 
       {/* Main Content Areas */}

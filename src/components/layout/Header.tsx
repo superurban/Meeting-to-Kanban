@@ -61,9 +61,6 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-sm font-semibold tracking-tight text-[var(--text-primary)] leading-none">
                 VoiceToKanban
               </h1>
-              <span className="badge-neutral text-[10px] py-0 px-1.5 leading-tight">
-                Enterprise
-              </span>
             </div>
             <p className="text-[11px] text-[var(--text-muted)] hidden sm:block leading-tight mt-0.5">
               Executive Meeting Protocol & Task Extraction
