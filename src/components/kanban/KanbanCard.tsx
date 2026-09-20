@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, User, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Calendar, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Task, TaskStatus } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -22,29 +22,31 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
   const prevStatus = currentStatusIndex > 0 ? STATUS_ORDER[currentStatusIndex - 1] : null;
   const nextStatus = currentStatusIndex < STATUS_ORDER.length - 1 ? STATUS_ORDER[currentStatusIndex + 1] : null;
 
-  const priorityConfig = {
-    low: { bg: 'bg-slate-800 text-slate-400 border-slate-700', label: 'Niedrig' },
-    medium: { bg: 'bg-amber-500/10 text-amber-300 border-amber-500/30', label: 'Mittel' },
-    high: { bg: 'bg-red-500/10 text-red-300 border-red-500/30', label: 'Hoch' }
+  const priorityBadge = {
+    low: { className: 'badge-neutral', label: 'Niedrig' },
+    medium: { className: 'badge-at-risk', label: 'Mittel' },
+    high: { className: 'badge-off-track', label: 'Hoch' }
   }[task.priority || 'medium'];
 
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, task.id)}
-      className="group bg-slate-900/90 hover:bg-slate-900 border border-slate-800 hover:border-blue-500/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing relative flex flex-col justify-between gap-3 select-none"
+      className="group card-saas p-3.5 hover:shadow-md transition-all duration-150 cursor-grab active:cursor-grabbing relative flex flex-col justify-between gap-2.5 select-none"
+      style={{
+        backgroundColor: 'var(--bg-surface)',
+        borderColor: 'var(--border-color)'
+      }}
     >
       <div>
         {/* Header: Priority & Quick Move Buttons */}
-        <div className="flex items-center justify-between gap-1 mb-2">
-          <span
-            className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md border ${priorityConfig.bg}`}
-          >
-            {priorityConfig.label}
+        <div className="flex items-center justify-between gap-1 mb-1.5">
+          <span className={`${priorityBadge.className} text-[10px] py-0 px-1.5`}>
+            {priorityBadge.label}
           </span>
 
-          {/* Quick status mover (especially convenient for mobile touch screens) */}
-          <div className="flex items-center gap-1 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Quick status mover */}
+          <div className="flex items-center gap-0.5 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity">
             {prevStatus && (
               <button
                 type="button"
@@ -52,8 +54,8 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
                   e.stopPropagation();
                   onMoveStatus(task.id, prevStatus);
                 }}
-                className="p-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                title="Eine Spalte nach links verschieben"
+                className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                title="Nach links verschieben"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
@@ -65,8 +67,8 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
                   e.stopPropagation();
                   onMoveStatus(task.id, nextStatus);
                 }}
-                className="p-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                title="Eine Spalte nach rechts verschieben"
+                className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                title="Nach rechts verschieben"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -77,7 +79,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
         {/* Task Title (Clickable) */}
         <h4
           onClick={() => onEdit(task)}
-          className="text-sm font-semibold text-slate-100 hover:text-blue-400 transition-colors cursor-pointer leading-snug"
+          className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer leading-snug"
         >
           {task.title}
         </h4>
@@ -86,7 +88,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
         {task.description && (
           <p
             onClick={() => onEdit(task)}
-            className="text-xs text-slate-400 mt-1.5 line-clamp-2 leading-relaxed cursor-pointer"
+            className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2 leading-relaxed cursor-pointer"
           >
             {task.description}
           </p>
@@ -94,17 +96,27 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
       </div>
 
       {/* Footer: Assignee & Due Date */}
-      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2 text-xs flex-wrap">
+      <div 
+        className="pt-2 border-t flex items-center justify-between gap-2 text-xs flex-wrap"
+        style={{ borderColor: 'var(--border-color)' }}
+      >
         {/* Assignee */}
-        <div className="flex items-center gap-1.5 text-slate-300 bg-slate-950/80 border border-slate-800 px-2 py-0.5 rounded-lg max-w-[140px] truncate">
-          <User className="w-3 h-3 text-blue-400 shrink-0" />
-          <span className="font-medium truncate">{task.assignee}</span>
+        <div 
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded-md max-w-[130px] truncate border"
+          style={{
+            backgroundColor: 'var(--bg-subtle)',
+            borderColor: 'var(--border-color)',
+            color: 'var(--text-primary)'
+          }}
+        >
+          <User className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+          <span className="font-medium text-[11px] truncate">{task.assignee}</span>
         </div>
 
         {/* Due Date */}
         {task.dueDate && (
-          <div className="flex items-center gap-1 text-slate-400 font-mono text-[11px]">
-            <Calendar className="w-3 h-3 text-indigo-400 shrink-0" />
+          <div className="flex items-center gap-1 text-[var(--text-muted)] font-mono text-[11px]">
+            <Calendar className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
             <span>{formatDate(task.dueDate)}</span>
           </div>
         )}

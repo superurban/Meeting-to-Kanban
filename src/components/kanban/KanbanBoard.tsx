@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Download, CheckCircle2, User, Sparkles, Copy, FileText, AlertCircle, Volume2, ArrowRight } from 'lucide-react';
+import { 
+  Plus, 
+  Search, 
+  Download, 
+  User, 
+  Sparkles, 
+  FileText, 
+  AlertCircle, 
+  Volume2, 
+  ArrowRight,
+  CheckCircle2 
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Task, TaskStatus, Meeting, Speaker } from '../../types';
 import { KanbanCard } from './KanbanCard';
@@ -13,15 +24,15 @@ interface KanbanBoardProps {
   onExtractTasksAgain: () => void;
   isExtracting: boolean;
   taskAlertMessage?: string | null;
-  onNavigateTab?: (tab: 'record' | 'transcript' | 'speakers' | 'kanban') => void;
+  onNavigateTab?: (tab: 'record' | 'transcript' | 'speakers' | 'kanban' | 'meetings') => void;
   onRequestClarification?: (speakerId: string) => void;
 }
 
-const COLUMNS: Array<{ id: TaskStatus; label: string; color: string; badgeBg: string }> = [
-  { id: 'backlog', label: 'Backlog', color: 'border-slate-700', badgeBg: 'bg-slate-800 text-slate-300' },
-  { id: 'todo', label: 'Zu erledigen', color: 'border-blue-500/40', badgeBg: 'bg-blue-500/10 text-blue-300' },
-  { id: 'in_progress', label: 'In Bearbeitung', color: 'border-amber-500/40', badgeBg: 'bg-amber-500/10 text-amber-300' },
-  { id: 'done', label: 'Erledigt', color: 'border-emerald-500/40', badgeBg: 'bg-emerald-500/10 text-emerald-300' }
+const COLUMNS: Array<{ id: TaskStatus; label: string; badgeClass: string }> = [
+  { id: 'backlog', label: 'Backlog', badgeClass: 'badge-neutral' },
+  { id: 'todo', label: 'Zu erledigen', badgeClass: 'badge-neutral' },
+  { id: 'in_progress', label: 'In Bearbeitung', badgeClass: 'badge-at-risk' },
+  { id: 'done', label: 'Erledigt', badgeClass: 'badge-on-track' }
 ];
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({
@@ -78,11 +89,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
     onUpdateTasks(updated);
 
-    // Fire celebratory confetti when completing a task
+    // Confetti on completing a task
     if (newStatus === 'done') {
       try {
         confetti({
-          particleCount: 50,
+          particleCount: 40,
           spread: 60,
           origin: { y: 0.7 }
         });
@@ -153,29 +164,36 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 pb-24 md:pb-8">
+    <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 py-5 space-y-4 pb-24 md:pb-8">
       {/* Control Bar: Filter, Search, New Task, Export */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
-        <div className="flex flex-wrap items-center gap-2 flex-1">
+      <div 
+        className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-lg border shadow-[var(--shadow-subtle)]"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)'
+        }}
+      >
+        <div className="flex flex-wrap items-center gap-2.5 flex-1">
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
+            <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2.5 pointer-events-none" />
             <input
               type="text"
-              placeholder="Aufgaben durchsuchen..."
+              placeholder="Aufgaben filtern..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-3 py-1.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-saas pl-8 text-xs w-full"
             />
           </div>
 
           {/* Assignee Filter Dropdown */}
           <div className="relative flex items-center">
-            <User className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+            <User className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 pointer-events-none" />
             <select
               value={filterAssignee}
               onChange={(e) => setFilterAssignee(e.target.value)}
-              className="bg-slate-950 text-slate-200 text-xs sm:text-sm rounded-xl pl-8 pr-6 py-1.5 border border-slate-700/80 hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Nach Zuständigen filtern"
+              className="input-saas pl-8 pr-6 text-xs"
             >
               <option value="all">Alle Zuständigen ({tasks.length})</option>
               {assignees.map((name) => (
@@ -194,16 +212,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               setSelectedTask(null);
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md shadow-blue-600/30 transition-all cursor-pointer"
+            className="btn-primary text-xs"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Task anlegen</span>
           </button>
 
           <button
             onClick={handleExportMarkdown}
             disabled={tasks.length === 0}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-xl border border-slate-700 transition-colors disabled:opacity-40 cursor-pointer"
+            className="btn-secondary text-xs"
             title="Aufgabenliste als Markdown exportieren"
           >
             <Download className="w-3.5 h-3.5" />
@@ -212,18 +230,36 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       </div>
 
-      {/* Unassigned Speakers Notification */}
+      {/* Unassigned Speakers Notification Banner */}
       {unassignedSpeakers.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+        <div 
+          className="p-3.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in"
+          style={{
+            backgroundColor: 'var(--status-at-risk-bg)',
+            borderColor: 'var(--status-at-risk-border)'
+          }}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 shrink-0">
+            <div 
+              className="p-1.5 rounded-md shrink-0"
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                color: 'var(--status-at-risk-text)'
+              }}
+            >
               <Volume2 className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs sm:text-sm font-semibold text-amber-200">
+              <p 
+                className="text-xs font-semibold"
+                style={{ color: 'var(--status-at-risk-text)' }}
+              >
                 {unassignedSpeakers.length} {unassignedSpeakers.length === 1 ? 'Sprecher konnte' : 'Sprecher konnten'} noch keinem Namen zugeordnet werden
               </p>
-              <p className="text-[11px] text-amber-300/70">
+              <p 
+                className="text-[11px] opacity-80 mt-0.5"
+                style={{ color: 'var(--status-at-risk-text)' }}
+              >
                 Spiele die 5s-Hörprobe ab, um die Stimme schnell einer Person zuzuweisen.
               </p>
             </div>
@@ -232,7 +268,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             {onNavigateTab && (
               <button
                 onClick={() => onNavigateTab('speakers')}
-                className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-semibold transition-colors cursor-pointer shrink-0"
+                className="btn-secondary text-xs py-1 px-2.5 shrink-0"
               >
                 Zu den Sprechern
               </button>
@@ -240,7 +276,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             {onRequestClarification && (
               <button
                 onClick={() => onRequestClarification(unassignedSpeakers[0].id)}
-                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-colors cursor-pointer shrink-0"
+                className="btn-primary text-xs py-1 px-2.5 shrink-0"
               >
                 5s-Hörprobe starten
               </button>
@@ -251,10 +287,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Task Alert Message (e.g. from pipeline extraction) */}
       {taskAlertMessage && (
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in">
-          <AlertCircle className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+        <div 
+          className="p-3.5 rounded-lg border flex items-start gap-3 animate-in fade-in"
+          style={{
+            backgroundColor: 'var(--status-neutral-bg)',
+            borderColor: 'var(--status-neutral-border)'
+          }}
+        >
+          <AlertCircle className="w-4 h-4 text-[var(--text-secondary)] shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-xs sm:text-sm font-medium text-blue-200">
+            <p className="text-xs font-medium text-[var(--text-primary)]">
               {taskAlertMessage}
             </p>
           </div>
@@ -263,17 +305,30 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Zero Tasks Info Card */}
       {tasks.length === 0 && (
-        <div className="bg-slate-900/90 border border-amber-500/30 rounded-3xl p-8 text-center max-w-xl mx-auto my-6 shadow-2xl animate-in fade-in">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-6 h-6" />
+        <div 
+          className="p-8 text-center max-w-lg mx-auto my-6 rounded-lg border shadow-[var(--shadow-subtle)] animate-in fade-in"
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-color)'
+          }}
+        >
+          <div 
+            className="w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-3"
+            style={{
+              backgroundColor: 'var(--bg-subtle)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-muted)'
+            }}
+          >
+            <AlertCircle className="w-5 h-5" />
           </div>
-          <h3 className="text-base sm:text-lg font-bold text-white">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">
             Keine Aufgaben im Meeting erkannt
           </h3>
-          <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed max-w-md mx-auto">
-            Im Transkript wurden keine konkreten Aufgaben, Zuständigkeiten oder Fälligkeitsdaten erwähnt. Du kannst Aufgaben manuell erstellen oder das Transkript erneut analysieren.
+          <p className="text-xs text-[var(--text-secondary)] mt-1.5 leading-relaxed max-w-sm mx-auto">
+            Im Transkript wurden keine konkreten Aufgaben oder Next Steps erwähnt. Du kannst Aufgaben manuell erstellen oder das Transkript prüfen.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+          <div className="flex flex-wrap items-center justify-center gap-2.5 mt-5">
             <button
               onClick={() => {
                 setSelectedTask({
@@ -290,25 +345,25 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 });
                 setIsModalOpen(true);
               }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
+              className="btn-primary text-xs"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               <span>Aufgabe manuell anlegen</span>
             </button>
             <button
               onClick={onExtractTasksAgain}
               disabled={isExtracting}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs sm:text-sm border border-slate-700 transition-colors disabled:opacity-50 cursor-pointer"
+              className="btn-secondary text-xs"
             >
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>{isExtracting ? 'Analysiere...' : 'Erneut mit KI analysieren'}</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>{isExtracting ? 'Analysiere...' : 'Erneut analysieren'}</span>
             </button>
             {onNavigateTab && (
               <button
                 onClick={() => onNavigateTab('transcript')}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs sm:text-sm transition-colors cursor-pointer"
+                className="btn-secondary text-xs"
               >
-                <FileText className="w-4 h-4" />
+                <FileText className="w-3.5 h-3.5" />
                 <span>Transkript prüfen</span>
               </button>
             )}
@@ -317,7 +372,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       )}
 
       {/* Mobile Column Tab Selector (< md breakpoint) */}
-      <div className="md:hidden flex rounded-xl bg-slate-900 border border-slate-800 p-1">
+      <div 
+        className="md:hidden flex rounded-lg border p-1"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)'
+        }}
+      >
         {COLUMNS.map((col) => {
           const count = filteredTasks.filter((t) => t.status === col.id).length;
           const isActive = mobileActiveColumn === col.id;
@@ -325,10 +386,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             <button
               key={col.id}
               onClick={() => setMobileActiveColumn(col.id)}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-lg text-center transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 text-xs font-medium rounded text-center transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[var(--text-primary)] text-[var(--bg-surface)] font-semibold'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               {col.label} ({count})
@@ -338,7 +399,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       </div>
 
       {/* Kanban Columns Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
         {COLUMNS.map((col) => {
           const colTasks = filteredTasks.filter((t) => t.status === col.id);
           const isHiddenOnMobile = mobileActiveColumn !== col.id;
@@ -348,17 +409,24 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               key={col.id}
               onDragOver={handleDragOver}
               onDrop={() => handleDrop(col.id)}
-              className={`bg-slate-900/60 border ${col.color} rounded-2xl p-3 sm:p-4 flex flex-col min-h-[480px] transition-colors ${
+              className={`rounded-lg p-3 sm:p-3.5 flex flex-col min-h-[480px] border transition-colors ${
                 draggedTaskId ? 'border-dashed' : ''
               } ${isHiddenOnMobile ? 'hidden md:flex' : 'flex'}`}
+              style={{
+                backgroundColor: 'var(--bg-subtle)',
+                borderColor: 'var(--border-color)'
+              }}
             >
               {/* Column Header */}
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800/80">
+              <div 
+                className="flex items-center justify-between pb-2.5 mb-2.5 border-b"
+                style={{ borderColor: 'var(--border-color)' }}
+              >
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-primary)]">
                     {col.label}
                   </h3>
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${col.badgeBg}`}>
+                  <span className={`${col.badgeClass} text-[11px] py-0 px-1.5 leading-tight`}>
                     {colTasks.length}
                   </span>
                 </div>
@@ -378,7 +446,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     });
                     setIsModalOpen(true);
                   }}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
                   title="Aufgabe zu dieser Spalte hinzufügen"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -386,9 +454,15 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </div>
 
               {/* Cards Container */}
-              <div className="flex-1 space-y-3 overflow-y-auto">
+              <div className="flex-1 space-y-2.5 overflow-y-auto">
                 {colTasks.length === 0 ? (
-                  <div className="h-32 border-2 border-dashed border-slate-800/60 rounded-xl flex items-center justify-center text-xs text-slate-500 italic">
+                  <div 
+                    className="h-28 border border-dashed rounded-lg flex items-center justify-center text-xs italic"
+                    style={{
+                      borderColor: 'var(--border-color)',
+                      color: 'var(--text-muted)'
+                    }}
+                  >
                     Keine Aufgaben
                   </div>
                 ) : (

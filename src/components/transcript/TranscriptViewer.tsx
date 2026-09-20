@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Square, UserCheck, AlertTriangle, Sparkles, Volume2, Edit2, ArrowRight, FileText, Users } from 'lucide-react';
+import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, ArrowRight, FileText, Users } from 'lucide-react';
 import { Meeting, TranscriptSegment, Speaker } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
 import { formatTimestamp } from '../../utils/dateUtils';
@@ -53,30 +53,33 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+    <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 py-5 space-y-4">
       {/* Sub-Tabs Switcher: Transkript & Sprecher */}
       {onNavigateTab && (
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div 
+          className="flex items-center justify-between pb-3 border-b"
+          style={{ borderColor: 'var(--border-color)' }}
+        >
           <div className="flex items-center gap-2">
             <button
               onClick={() => onNavigateTab('transcript')}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-blue-600 text-white shadow-md shadow-blue-600/30 transition-all cursor-pointer"
+              className="btn-primary text-xs"
             >
-              <FileText className="w-4 h-4" />
+              <FileText className="w-3.5 h-3.5" />
               <span>Transkript ({meeting.segments.length})</span>
             </button>
             <button
               onClick={() => onNavigateTab('speakers')}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-colors cursor-pointer"
+              className="btn-secondary text-xs"
             >
-              <Users className="w-4 h-4" />
+              <Users className="w-3.5 h-3.5" />
               <span>Sprecher ({meeting.speakers.length})</span>
             </button>
           </div>
 
           <button
             onClick={() => onNavigateTab('kanban')}
-            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium cursor-pointer"
+            className="btn-secondary text-xs py-1"
           >
             <span>Zum Kanban Board</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -85,12 +88,18 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
       )}
 
       {/* Action & Status Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+      <div 
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border shadow-[var(--shadow-subtle)]"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)'
+        }}
+      >
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
             {meeting.title || 'Meeting-Transkript'}
           </h2>
-          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
+          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
             <span>{meeting.segments.length} Abschnitte</span>
             <span>•</span>
             <span>{meeting.speakers.length} erkannte Sprecher</span>
@@ -103,35 +112,53 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
         <button
           onClick={onExtractTasks}
           disabled={isExtractingTasks || meeting.segments.length === 0}
-          className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50 cursor-pointer shrink-0"
+          className="btn-primary text-xs shrink-0"
         >
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="w-3.5 h-3.5" />
           <span>{isExtractingTasks ? 'Analysiere Next Steps...' : 'Kanban-Tasks generieren'}</span>
         </button>
       </div>
 
       {/* Unassigned Speakers Clarification Banner */}
       {unassignedSpeakers.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div 
+          className="p-3.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          style={{
+            backgroundColor: 'var(--status-at-risk-bg)',
+            borderColor: 'var(--status-at-risk-border)'
+          }}
+        >
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
-              <AlertTriangle className="w-5 h-5" />
+            <div 
+              className="p-1.5 rounded-md shrink-0"
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                color: 'var(--status-at-risk-text)'
+              }}
+            >
+              <AlertTriangle className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-amber-200">
+              <h3 
+                className="text-xs font-semibold"
+                style={{ color: 'var(--status-at-risk-text)' }}
+              >
                 {unassignedSpeakers.length} Sprecher ohne Klarnamen
               </h3>
-              <p className="text-xs text-amber-200/80 mt-0.5">
+              <p 
+                className="text-[11px] opacity-80 mt-0.5"
+                style={{ color: 'var(--status-at-risk-text)' }}
+              >
                 Spiele einen Tonschnipsel ab, um die Stimmen zuzuordnen:
               </p>
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-1.5 mt-2">
                 {unassignedSpeakers.map((spk) => (
                   <button
                     key={spk.id}
                     onClick={() => onRequestClarification(spk.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-xs font-semibold text-amber-200 transition-colors cursor-pointer"
+                    className="btn-secondary text-[11px] py-0.5 px-2"
                   >
-                    <Volume2 className="w-3.5 h-3.5" />
+                    <Volume2 className="w-3 h-3" />
                     <span>{spk.assignedName || spk.label} zuweisen</span>
                   </button>
                 ))}
@@ -142,8 +169,8 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
       )}
 
       {/* Segments Transcript Timeline */}
-      <div className="space-y-3">
-        {meeting.segments.map((seg, idx) => {
+      <div className="space-y-2.5">
+        {meeting.segments.map((seg) => {
           const speaker = speakerMap.get(seg.speakerId);
           const isPlaying = playingSegmentId === seg.id;
           const speakerName = speaker?.assignedName || speaker?.label || seg.speakerLabel;
@@ -152,47 +179,42 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
           return (
             <div
               key={seg.id}
-              className={`bg-slate-900/90 border rounded-2xl p-4 transition-all ${
-                isPlaying
-                  ? 'border-blue-500/80 ring-1 ring-blue-500/40 bg-slate-900 shadow-lg'
-                  : 'border-slate-800/80 hover:border-slate-700'
+              className={`p-3.5 rounded-lg border transition-all duration-150 ${
+                isPlaying ? 'ring-2 ring-blue-500/30' : ''
               }`}
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: isPlaying ? 'var(--text-primary)' : 'var(--border-color)'
+              }}
             >
               {/* Segment Header */}
-              <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Speaker Tag / Badge */}
                   <button
                     onClick={() => onRequestClarification(seg.speakerId)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-transform hover:scale-105 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium transition-transform hover:scale-102 cursor-pointer border"
                     style={{
-                      backgroundColor: `${speaker?.color || '#3b82f6'}20`,
-                      color: speaker?.color || '#60a5fa',
-                      border: `1px solid ${speaker?.color || '#3b82f6'}40`
+                      backgroundColor: `${speaker?.color || '#3b82f6'}15`,
+                      color: speaker?.color || '#3b82f6',
+                      borderColor: `${speaker?.color || '#3b82f6'}30`
                     }}
                     title="Klicken, um Sprecher umzubenennen oder anzuhören"
                   >
                     <span>{speakerName}</span>
-                    <Edit2 className="w-3 h-3 opacity-70" />
+                    <Edit2 className="w-2.5 h-2.5 opacity-60" />
                   </button>
 
                   {/* Recognition Source / Confidence */}
                   {speaker?.assignedName && (
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
-                        isHighConfidence
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                          : 'bg-slate-800 text-slate-400 border-slate-700'
-                      }`}
-                      title={speaker.evidence || 'Automatisch im Gesprächsverlauf zugeordnet'}
-                    >
-                      {isHighConfidence ? '✓ Automatisch erkannt' : 'Manuell zugeordnet'}
+                    <span className={isHighConfidence ? 'badge-on-track text-[10px]' : 'badge-neutral text-[10px]'}>
+                      {isHighConfidence ? '✓ Erkannt' : 'Zugeordnet'}
                     </span>
                   )}
 
                   {/* Addressed To Note */}
                   {seg.addressedTo && (
-                    <span className="text-[10px] bg-blue-500/10 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded">
+                    <span className="badge-neutral text-[10px]">
                       Spricht <strong>{seg.addressedTo}</strong> an
                     </span>
                   )}
@@ -200,29 +222,27 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
 
                 {/* Snippet Playback Button & Time */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
+                  <span className="text-[11px] font-mono text-[var(--text-muted)] hidden sm:inline">
                     {formatTimestamp(seg.startTime)}
                   </span>
                   <button
                     onClick={() => handlePlaySegment(seg)}
-                    className={`p-1.5 rounded-lg text-xs transition-colors flex items-center gap-1 cursor-pointer ${
-                      isPlaying
-                        ? 'bg-red-600 text-white'
-                        : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
-                    }`}
+                    className="p-1 rounded border text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                    style={{ borderColor: 'var(--border-color)' }}
                     title="Diesen Abschnitt anhören"
+                    aria-label="Abschnitt anhören"
                   >
                     {isPlaying ? (
-                      <Square className="w-3.5 h-3.5 fill-white" />
+                      <Square className="w-3 h-3 text-red-600 fill-current" />
                     ) : (
-                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <Play className="w-3 h-3 fill-current" />
                     )}
                   </button>
                 </div>
               </div>
 
               {/* Segment Text Content */}
-              <p className="text-sm text-slate-200 leading-relaxed font-normal">
+              <p className="text-sm text-[var(--text-primary)] leading-relaxed font-normal">
                 {seg.text}
               </p>
             </div>

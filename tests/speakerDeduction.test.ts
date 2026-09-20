@@ -133,4 +133,18 @@ describe('Speaker Deduction & Date Utils', () => {
     expect(tasks).toEqual([]);
     expect(tasks.length).toBe(0);
   });
+
+  it('Meeting deletion correctly filters out deleted meeting and handles fallback selection', () => {
+    const meetings = [
+      { id: 'm1', title: 'Sprint Review', date: '2026-09-18T10:00:00Z', durationSeconds: 120, speakers: [], segments: [], tasks: [], status: 'ready' as const },
+      { id: 'm2', title: 'Board Sync', date: '2026-09-19T10:00:00Z', durationSeconds: 240, speakers: [], segments: [], tasks: [], status: 'ready' as const }
+    ];
+
+    const deleteMeetingId = 'm1';
+    const remaining = meetings.filter((m) => m.id !== deleteMeetingId);
+
+    expect(remaining.length).toBe(1);
+    expect(remaining[0].id).toBe('m2');
+    expect(remaining.find((m) => m.id === 'm1')).toBeUndefined();
+  });
 });

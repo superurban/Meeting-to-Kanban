@@ -6,7 +6,6 @@ import {
   Play, 
   Square, 
   Check, 
-  Sparkles, 
   AlertCircle, 
   Edit3, 
   Clock, 
@@ -102,29 +101,32 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+    <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 py-5 space-y-4">
       {/* Sub-Tabs Switcher: Transkript & Sprecher */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div 
+        className="flex items-center justify-between pb-3 border-b"
+        style={{ borderColor: 'var(--border-color)' }}
+      >
         <div className="flex items-center gap-2">
           <button
             onClick={() => onNavigateTab('transcript')}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-colors cursor-pointer"
+            className="btn-secondary text-xs"
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="w-3.5 h-3.5" />
             <span>Transkript ({meeting.segments.length})</span>
           </button>
           <button
             onClick={() => onNavigateTab('speakers')}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-blue-600 text-white shadow-md shadow-blue-600/30 transition-all cursor-pointer"
+            className="btn-primary text-xs"
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-3.5 h-3.5" />
             <span>Sprecher ({meeting.speakers.length})</span>
           </button>
         </div>
 
         <button
           onClick={() => onNavigateTab('kanban')}
-          className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium cursor-pointer"
+          className="btn-secondary text-xs py-1"
         >
           <span>Zum Kanban Board</span>
           <ArrowRight className="w-3.5 h-3.5" />
@@ -132,28 +134,32 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
       </div>
 
       {/* Overview Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-400" />
-              <span>Erkannte Stimmen & Sprecher</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Hier kannst du alle Personen des Meetings einsehen, Stimmen per 5s-Audio-Schnipsel anhören und Namen anpassen.
-            </p>
-          </div>
+      <div 
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border shadow-[var(--shadow-subtle)]"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)'
+        }}
+      >
+        <div>
+          <h2 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+            <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span>Erkannte Stimmen & Sprecher</span>
+          </h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            Sprecher einsehen, Stimmen per 5s-Audio-Schnipsel anhören und Namen anpassen.
+          </p>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-xl border border-slate-700">
-              {meeting.speakers.length} {meeting.speakers.length === 1 ? 'Person' : 'Personen'} erfasst
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="badge-neutral text-xs">
+            {meeting.speakers.length} {meeting.speakers.length === 1 ? 'Person' : 'Personen'} erfasst
+          </span>
         </div>
       </div>
 
       {/* Speaker Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         {meeting.speakers.map((speaker) => {
           const speakerSegments = meeting.segments.filter((s) => s.speakerId === speaker.id);
           const bestSegment = speakerSegments[0] || {
@@ -180,23 +186,26 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
           return (
             <div
               key={speaker.id}
-              className={`bg-slate-900/90 border rounded-2xl p-5 flex flex-col justify-between transition-all ${
-                is5sPlaying || isFullPlaying
-                  ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-xl shadow-blue-500/10'
-                  : 'border-slate-800 hover:border-slate-700'
+              className={`p-4 rounded-lg border flex flex-col justify-between transition-all duration-150 ${
+                is5sPlaying || isFullPlaying ? 'ring-2 ring-blue-500/30' : ''
               }`}
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: is5sPlaying || isFullPlaying ? 'var(--text-primary)' : 'var(--border-color)',
+                boxShadow: 'var(--shadow-subtle)'
+              }}
             >
               <div>
                 {/* Speaker Identity Header */}
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-3">
-                    {/* Avatar with color */}
+                <div className="flex items-start justify-between gap-3 mb-2.5">
+                  <div className="flex items-center gap-2.5">
+                    {/* Avatar */}
                     <div
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-base shadow-md shrink-0"
+                      className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 border"
                       style={{
-                        backgroundColor: `${speaker.color}25`,
+                        backgroundColor: `${speaker.color}15`,
                         color: speaker.color,
-                        border: `2px solid ${speaker.color}60`
+                        borderColor: `${speaker.color}40`
                       }}
                     >
                       {displayName.charAt(0).toUpperCase()}
@@ -212,32 +221,32 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
                             onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit(speaker.id)}
                             autoFocus
                             placeholder="Name eingeben..."
-                            className="bg-slate-950 border border-blue-500 rounded-lg px-2.5 py-1 text-xs sm:text-sm text-white focus:outline-none w-36"
+                            className="input-saas text-xs w-32 py-1"
                           />
                           <button
                             onClick={() => handleSaveEdit(speaker.id)}
-                            className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer"
+                            className="btn-primary text-xs py-1 px-2"
                             title="Speichern"
                           >
-                            <Check className="w-3.5 h-3.5" />
+                            <Check className="w-3 h-3" />
                           </button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                             {displayName}
                           </h3>
                           <button
                             onClick={() => handleStartEdit(speaker)}
-                            className="text-slate-400 hover:text-slate-200 transition-colors p-1 cursor-pointer"
+                            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-0.5 cursor-pointer"
                             title="Namen bearbeiten"
                           >
-                            <Edit3 className="w-3.5 h-3.5" />
+                            <Edit3 className="w-3 h-3" />
                           </button>
                         </div>
                       )}
 
-                      <span className="text-[11px] text-slate-500 font-mono">
+                      <span className="text-[11px] text-[var(--text-muted)] font-mono block">
                         {speaker.label}
                       </span>
                     </div>
@@ -246,20 +255,17 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
                   {/* Recognition Status Badge */}
                   <div>
                     {isAutoRecognized ? (
-                      <span
-                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1"
-                        title={speaker.evidence || 'Im Gesprächsfluss automatisch erkannt'}
-                      >
-                        <Check className="w-3 h-3" />
+                      <span className="badge-on-track text-[10px]">
+                        <Check className="w-2.5 h-2.5" />
                         <span>Erkannt</span>
                       </span>
                     ) : isIdentified ? (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                      <span className="badge-neutral text-[10px]">
                         Zugeordnet
                       </span>
                     ) : (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
+                      <span className="badge-at-risk text-[10px]">
+                        <AlertCircle className="w-2.5 h-2.5" />
                         <span>Unklar</span>
                       </span>
                     )}
@@ -268,17 +274,30 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
 
                 {/* Evidence / Reason Note */}
                 {speaker.evidence && (
-                  <p className="text-[11px] text-slate-400 bg-slate-950/60 p-2 rounded-xl border border-slate-800/80 mb-3">
-                    <span className="text-slate-500 font-semibold">Hinweis:</span> {speaker.evidence}
+                  <p 
+                    className="text-[11px] p-2 rounded-md border mb-2.5 leading-snug"
+                    style={{
+                      backgroundColor: 'var(--bg-subtle)',
+                      borderColor: 'var(--border-color)',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    <span className="font-semibold text-[var(--text-primary)]">Hinweis:</span> {speaker.evidence}
                   </p>
                 )}
 
                 {/* Spoken Quote Preview */}
-                <div className="bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/60 mb-3">
-                  <p className="text-xs text-slate-300 italic line-clamp-2 leading-relaxed">
+                <div 
+                  className="p-2.5 rounded-md border mb-2.5"
+                  style={{
+                    backgroundColor: 'var(--bg-subtle)',
+                    borderColor: 'var(--border-color)'
+                  }}
+                >
+                  <p className="text-xs text-[var(--text-secondary)] italic line-clamp-2 leading-relaxed">
                     "{bestSegment.text}"
                   </p>
-                  <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-500">
+                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-[var(--text-muted)]">
                     <span className="flex items-center gap-1">
                       <MessageSquare className="w-3 h-3" />
                       {speakerSegments.length} Beiträge
@@ -292,16 +311,16 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
 
                 {/* Quick Name Suggestions */}
                 {!isIdentified && suggestedNames.length > 0 && (
-                  <div className="mb-3">
-                    <span className="text-[10px] text-slate-500 block mb-1">
+                  <div className="mb-2.5">
+                    <span className="text-[10px] text-[var(--text-muted)] block mb-1">
                       Vorschläge aus dem Meeting:
                     </span>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1">
                       {suggestedNames.map((name) => (
                         <button
                           key={name}
                           onClick={() => onUpdateSpeakerName(speaker.id, name)}
-                          className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-blue-600/30 hover:border-blue-500/50 border border-slate-700 text-slate-300 hover:text-blue-300 text-[11px] transition-colors cursor-pointer"
+                          className="btn-secondary text-[10px] py-0.5 px-1.5"
                         >
                           + {name}
                         </button>
@@ -312,25 +331,24 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
               </div>
 
               {/* Audio Snippet Action Buttons */}
-              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2 mt-2">
+              <div 
+                className="pt-2.5 border-t flex items-center justify-between gap-2 mt-2"
+                style={{ borderColor: 'var(--border-color)' }}
+              >
                 {/* 5-second Audio Snippet Player */}
                 <button
                   onClick={() => handlePlay5sSnippet(speaker, bestSegment)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                    is5sPlaying
-                      ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
-                      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20'
-                  }`}
+                  className="btn-primary text-xs py-1 px-3"
                   title="Spielt exakt 5 Sekunden aus dem Sprachabschnitt ab"
                 >
                   {is5sPlaying ? (
                     <>
-                      <Square className="w-3.5 h-3.5 fill-current" />
+                      <Square className="w-3 h-3 fill-current" />
                       <span>5s Stopp</span>
                     </>
                   ) : (
                     <>
-                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <Play className="w-3 h-3 fill-current" />
                       <span>5s Hörprobe</span>
                     </>
                   )}
@@ -339,16 +357,12 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
                 {/* Full playback fallback */}
                 <button
                   onClick={() => handlePlayFullSegment(speaker, bestSegment)}
-                  className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs transition-colors cursor-pointer border ${
-                    isFullPlaying
-                      ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                  }`}
+                  className="btn-secondary text-xs py-1 px-2.5"
                   title="Ganzen Abschnitt ohne 5s-Limit abspielen"
                 >
                   {isFullPlaying ? (
                     <>
-                      <Square className="w-3 h-3 fill-current" />
+                      <Square className="w-3 h-3 fill-current text-red-500" />
                       <span>Stopp</span>
                     </>
                   ) : (

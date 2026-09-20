@@ -12,15 +12,15 @@ interface SettingsModalProps {
 }
 
 const AUDIO_MODELS = [
-  { id: 'google/gemini-3.8-flash', name: 'Google: Gemini 3.8 Flash (Beste Empfehlung: Neueste Generation & präziseste Sprechertrennung)', provider: 'Google' },
+  { id: 'google/gemini-3.8-flash', name: 'Google: Gemini 3.8 Flash (Empfohlen: Neueste Generation & präzise Sprechertrennung)', provider: 'Google' },
   { id: 'google/gemini-2.5-flash', name: 'Google: Gemini 2.5 Flash (Schnell & sehr günstig: $0.30/1M Token)', provider: 'Google' },
-  { id: 'google/gemini-flash-latest', name: 'Google: Gemini Flash Latest (Verweist automatisch immer auf das neueste Modell)', provider: 'Google' },
-  { id: 'google/gemini-2.5-pro', name: 'Google: Gemini 2.5 Pro (Für hallige Konferenzräume & schwere Akustik)', provider: 'Google' }
+  { id: 'google/gemini-flash-latest', name: 'Google: Gemini Flash Latest (Verweist automatisch auf das neueste Modell)', provider: 'Google' },
+  { id: 'google/gemini-2.5-pro', name: 'Google: Gemini 2.5 Pro (Für Konferenzräume mit hoher Halligkeit)', provider: 'Google' }
 ];
 
 const SUMMARY_MODELS = [
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek-V3 / Flash (Favorit: Extrem präzise Aufgaben & kostengünstig)', provider: 'DeepSeek' },
-  { id: 'deepseek/deepseek-r1', name: 'DeepSeek-R1 (Tiefes Reasoning bei unklaren Aufgaben)', provider: 'DeepSeek' },
+  { id: 'deepseek/deepseek-chat', name: 'DeepSeek-V3 / Flash (Empfohlen: Extrem präzise Aufgaben & kostengünstig)', provider: 'DeepSeek' },
+  { id: 'deepseek/deepseek-r1', name: 'DeepSeek-R1 (Tiefes Reasoning bei komplexen Next Steps)', provider: 'DeepSeek' },
   { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Ultra-schnell, 1M+ Token Kontext)', provider: 'Google' },
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (Höchste Sprach- & Analyse-Qualität)', provider: 'Anthropic' },
   { id: 'openai/gpt-4o', name: 'GPT-4o (Omni)', provider: 'OpenAI' }
@@ -34,7 +34,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onResetData
 }) => {
   const [apiKey, setApiKey] = useState(config.apiKey);
-  const [audioModel, setAudioModel] = useState(config.audioModel || 'google/gemini-2.0-flash-001');
+  const [audioModel, setAudioModel] = useState(config.audioModel || 'google/gemini-3.8-flash');
   const [summaryModel, setSummaryModel] = useState(config.summaryModel || 'deepseek/deepseek-chat');
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -87,33 +87,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+      <div 
+        className="container-large max-w-lg w-full p-5 relative max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-150"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          boxShadow: 'var(--shadow-modal)'
+        }}
+      >
+        <div 
+          className="flex items-center justify-between pb-3 mb-3.5 border-b"
+          style={{ borderColor: 'var(--border-color)' }}
+        >
           <div className="flex items-center gap-2">
-            <Key className="w-5 h-5 text-blue-400" />
-            <h2 className="text-base font-bold text-white">OpenRouter & KI-Modell Einstellungen</h2>
+            <Key className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+              OpenRouter & KI-Einstellungen
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+            aria-label="Schließen"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           {/* API Key Input */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-slate-300">
+              <label className="text-xs font-medium text-[var(--text-secondary)]">
                 OpenRouter API Key
               </label>
               <a
                 href="https://openrouter.ai/keys"
                 target="_blank"
                 rel="noreferrer"
-                className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
               >
                 <span>Key generieren</span>
                 <ExternalLink className="w-3 h-3" />
@@ -124,23 +137,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="sk-or-v1-..."
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-600"
+              className="input-saas w-full font-mono text-xs"
             />
-            <p className="text-[11px] text-slate-400 mt-1">
-              Wird sicher lokal in deinem Browser (LocalStorage / IndexedDB) gespeichert.
+            <p className="text-[11px] text-[var(--text-muted)] mt-1">
+              Wird sicher lokal in deinem Browser (IndexedDB / LocalStorage) gespeichert.
             </p>
           </div>
 
           {/* Audio Diarization Model Selection */}
-          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-              <Mic className="w-3.5 h-3.5 text-blue-400" />
-              1. Modell für Audio & Multi-Speaker Erkennung
+          <div 
+            className="p-3 rounded-lg border space-y-1.5"
+            style={{
+              backgroundColor: 'var(--bg-subtle)',
+              borderColor: 'var(--border-color)'
+            }}
+          >
+            <label className="block text-xs font-medium text-[var(--text-primary)] flex items-center gap-1.5">
+              <Mic className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>1. Modell für Audio & Multi-Speaker Erkennung</span>
             </label>
             <select
               value={audioModel}
               onChange={(e) => setAudioModel(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-saas w-full text-xs"
             >
               {AUDIO_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -148,21 +167,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </option>
               ))}
             </select>
-            <p className="text-[11px] text-slate-400">
-              Verarbeitet das Roh-Audio direkt und trennt Stimmen anhand von Timbre, Pausen und Tonhöhe.
+            <p className="text-[11px] text-[var(--text-muted)]">
+              Verarbeitet Roh-Audio und trennt Stimmen anhand von Timbre und Pausen.
             </p>
           </div>
 
           {/* Semantic Summarization & Kanban Model Selection */}
-          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              2. Modell für semantische Zusammenfassung & Kanban
+          <div 
+            className="p-3 rounded-lg border space-y-1.5"
+            style={{
+              backgroundColor: 'var(--bg-subtle)',
+              borderColor: 'var(--border-color)'
+            }}
+          >
+            <label className="block text-xs font-medium text-[var(--text-primary)] flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>2. Modell für Aufgabenextraktion & Kanban</span>
             </label>
             <select
               value={summaryModel}
               onChange={(e) => setSummaryModel(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-saas w-full text-xs"
             >
               {SUMMARY_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -170,18 +195,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </option>
               ))}
             </select>
-            <p className="text-[11px] text-slate-400">
-              Analysiert das Transkript, leitet Fälligkeiten ab und extrahiert saubere Action Items.
+            <p className="text-[11px] text-[var(--text-muted)]">
+              Analysiert das Transkript und extrahiert Aufgaben, Zuständige und Fälligkeiten.
             </p>
           </div>
 
           {/* Test connection */}
-          <div className="pt-1">
+          <div className="pt-0.5">
             <button
               type="button"
               onClick={handleTestKey}
               disabled={isTesting || !apiKey.trim()}
-              className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
+              className="btn-secondary w-full text-xs"
             >
               {isTesting ? (
                 <>
@@ -195,16 +220,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {testResult && (
               <div
-                className={`mt-2 p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                className={`mt-2 p-2.5 rounded-md text-xs flex items-center gap-2 border ${
                   testResult.success
-                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
-                    : 'bg-red-500/10 border border-red-500/30 text-red-300'
+                    ? 'badge-on-track'
+                    : 'badge-off-track'
                 }`}
               >
                 {testResult.success ? (
-                  <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <CheckCircle className="w-3.5 h-3.5 shrink-0" />
                 ) : (
-                  <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 )}
                 <span>{testResult.message}</span>
               </div>
@@ -212,8 +237,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Danger Zone: Reset Data */}
-          <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
-            <span className="text-[11px] text-slate-500">Lokale Meetings & Cache</span>
+          <div 
+            className="pt-2.5 border-t flex items-center justify-between"
+            style={{ borderColor: 'var(--border-color)' }}
+          >
+            <span className="text-[11px] text-[var(--text-muted)]">Gesamte Datenbank zurücksetzen</span>
             <button
               type="button"
               onClick={() => {
@@ -222,25 +250,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onClose();
                 }
               }}
-              className="text-red-400 hover:text-red-300 text-xs flex items-center gap-1 p-1 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+              className="text-red-600 dark:text-red-400 hover:underline text-xs flex items-center gap-1 cursor-pointer font-medium"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Daten leeren</span>
+              <Trash2 className="w-3 h-3" />
+              <span>Alle Daten leeren</span>
             </button>
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+          <div 
+            className="flex items-center justify-end gap-2 pt-3 border-t"
+            style={{ borderColor: 'var(--border-color)' }}
+          >
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              className="btn-secondary text-xs"
             >
               Schließen
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/30 transition-all cursor-pointer"
+              className="btn-primary text-xs"
             >
               Einstellungen speichern
             </button>

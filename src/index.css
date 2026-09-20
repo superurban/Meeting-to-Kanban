@@ -1,20 +1,364 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: dark;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: light dark;
+
+  /* --- LIGHT MODE (Executive SaaS / Asana / Linear inspired) --- */
+  --bg-app: #f8fafc;        /* slate-50 */
+  --bg-surface: #ffffff;    /* pure white surface */
+  --bg-hover: #f1f5f9;      /* subtle hover */
+  --bg-subtle: #f8fafc;     /* light gray accents */
+  --bg-active: #e2e8f0;
+
+  --text-primary: #0f172a;   /* slate-900 */
+  --text-secondary: #475569; /* slate-600 */
+  --text-muted: #94a3b8;     /* slate-400 */
+
+  --border-color: #e2e8f0;   /* crisp light border */
+  --border-hover: #cbd5e1;
+
+  /* Authentic Asana Semantic Status Badges (Light) */
+  --status-on-track-text: #15803d;
+  --status-on-track-bg: #f0fdf4;
+  --status-on-track-border: #bbf7d0;
+
+  --status-at-risk-text: #b45309;
+  --status-at-risk-bg: #fffbeb;
+  --status-at-risk-border: #fde68a;
+
+  --status-off-track-text: #b91c1c;
+  --status-off-track-bg: #fef2f2;
+  --status-off-track-border: #fecaca;
+
+  --status-neutral-text: #475569;
+  --status-neutral-bg: #f8fafc;
+  --status-neutral-border: #e2e8f0;
+
+  /* Executive Primary / Secondary Buttons */
+  --btn-primary-bg: #0f172a;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #1e293b;
+
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-text: #475569;
+  --btn-secondary-border: #e2e8f0;
+  --btn-secondary-hover-bg: #f1f5f9;
+  --btn-secondary-hover-text: #0f172a;
+  --btn-secondary-hover-border: #cbd5e1;
+
+  /* Shadows */
+  --shadow-subtle: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-dropdown: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-modal: 0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+}
+
+.dark {
+  /* --- DARK MODE (Executive SaaS / Linear inspired) --- */
+  --bg-app: #171717;        /* neutral-900 */
+  --bg-surface: #262626;    /* neutral-800 */
+  --bg-hover: #2e2e2e;      /* subtle hover */
+  --bg-subtle: #1f1f1f;
+  --bg-active: #404040;
+
+  --text-primary: #fafafa;   /* neutral-50 */
+  --text-secondary: #d4d4d4; /* neutral-300 */
+  --text-muted: #a3a3a3;     /* neutral-400 */
+
+  --border-color: #525252;   /* neutral-600 */
+  --border-hover: #737373;
+
+  /* Authentic Asana Semantic Status Badges (Dark) */
+  --status-on-track-text: #86efac;
+  --status-on-track-bg: #14532d;
+  --status-on-track-border: #166534;
+
+  --status-at-risk-text: #fde047;
+  --status-at-risk-bg: #78350f;
+  --status-at-risk-border: #92400e;
+
+  --status-off-track-text: #fca5a5;
+  --status-off-track-bg: #7f1d1d;
+  --status-off-track-border: #991b1b;
+
+  --status-neutral-text: #d4d4d4;
+  --status-neutral-bg: #262626;
+  --status-neutral-border: #525252;
+
+  /* Executive Primary / Secondary Buttons */
+  --btn-primary-bg: #fafafa;
+  --btn-primary-text: #171717;
+  --btn-primary-hover: #e5e5e5;
+
+  --btn-secondary-bg: #262626;
+  --btn-secondary-text: #d4d4d4;
+  --btn-secondary-border: #525252;
+  --btn-secondary-hover-bg: #2f2f2f;
+  --btn-secondary-hover-text: #fafafa;
+  --btn-secondary-hover-border: #737373;
+
+  /* Shadows */
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.7);
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #0b0f19;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 0.875rem; /* 14px compact body text */
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+/* Headings: Tight 1rem to 1.25rem with 600 weight */
+h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* --- Minimalist Executive Component Utility Classes --- */
+
+/* Asana Semantic Status Badges */
+.badge-on-track {
+  color: var(--status-on-track-text);
+  background-color: var(--status-on-track-bg);
+  border: 1px solid var(--status-on-track-border);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+}
+
+.badge-at-risk {
+  color: var(--status-at-risk-text);
+  background-color: var(--status-at-risk-bg);
+  border: 1px solid var(--status-at-risk-border);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+}
+
+.badge-off-track {
+  color: var(--status-off-track-text);
+  background-color: var(--status-off-track-bg);
+  border: 1px solid var(--status-off-track-border);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+}
+
+.badge-neutral {
+  color: var(--status-neutral-text);
+  background-color: var(--status-neutral-bg);
+  border: 1px solid var(--status-neutral-border);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+}
+
+/* Buttons (Fast 150ms transition, 6px border-radius) */
+.btn-primary {
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 6px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 150ms ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--btn-primary-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  border: 1px solid var(--btn-secondary-border);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 6px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: var(--shadow-subtle);
+  transition: all 150ms ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--btn-secondary-hover-bg);
+  color: var(--btn-secondary-hover-text);
+  border-color: var(--btn-secondary-hover-border);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  background-color: #ef4444;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 6px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+/* Minimalist Inputs & Dropdowns */
+.input-saas {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.input-saas:focus {
+  border-color: var(--text-primary);
+  outline: none;
+}
+
+/* Executive Cards */
+.card-saas {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-subtle);
+}
+
+.container-large {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-subtle);
+}
+
+/* KPI Cards */
+.kpi-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: var(--shadow-subtle);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.kpi-value {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.kpi-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+/* Executive Data Tables */
+.table-saas {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.table-saas th {
+  padding: 10px 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-subtle);
+}
+
+.table-saas td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.table-saas tr:hover td {
+  background-color: var(--bg-hover);
 }
 
 /* Custom smooth scrollbars */
@@ -24,14 +368,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg-app);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.8);
+  background: var(--border-color);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 1);
+  background: var(--border-hover);
 }

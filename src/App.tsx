@@ -8,11 +8,14 @@ import { TaskExtractorService } from './services/ai/taskExtractor';
 
 import { Header } from './components/layout/Header';
 import { Navigation, AppTab } from './components/layout/Navigation';
+import { KpiRow } from './components/dashboard/KpiRow';
 import { MeetingRecorder } from './components/recorder/MeetingRecorder';
 import { TranscriptViewer } from './components/transcript/TranscriptViewer';
 import { SpeakersViewer } from './components/speakers/SpeakersViewer';
 import { SpeakerClarificationModal } from './components/transcript/SpeakerClarificationModal';
 import { KanbanBoard } from './components/kanban/KanbanBoard';
+import { MeetingsManagerView } from './components/meetings/MeetingsManagerView';
+import { DeleteConfirmModal } from './components/meetings/DeleteConfirmModal';
 import { SettingsModal } from './components/settings/SettingsModal';
 
 export const App: React.FC = () => {
@@ -21,6 +24,22 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('record');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [config, setConfig] = useState<OpenRouterConfig>(AudioStorage.getOpenRouterConfig());
+
+  // Theme Management (Light / Dark Executive SaaS)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('voice_kanban_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('voice_kanban_theme', theme);
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   // Processing & UI States
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,6 +50,9 @@ export const App: React.FC = () => {
   const [taskAlertMessage, setTaskAlertMessage] = useState<string | null>(null);
   const [clarificationRequest, setClarificationRequest] = useState<SpeakerClarificationRequest | null>(null);
   const [clarificationQueue, setClarificationQueue] = useState<SpeakerClarificationRequest[]>([]);
+
+  // Deletion Confirmation State
+  const [deleteTargetMeeting, setDeleteTargetMeeting] = useState<Meeting | null>(null);
 
   // Load meetings on mount
   useEffect(() => {
@@ -71,6 +93,48 @@ export const App: React.FC = () => {
 
   const handleNewMeeting = () => {
     setActiveTab('record');
+  };
+
+  /**
+   * Meeting Deletion Handlers
+   */
+  const handleRequestDeleteCurrentMeeting = () => {
+    if (currentMeeting) {
+      setDeleteTargetMeeting(currentMeeting);
+    }
+  };
+
+  const handleRequestDeleteMeeting = (meeting: Meeting) => {
+    setDeleteTargetMeeting(meeting);
+  };
+
+  const handleConfirmDeleteMeeting = async (meetingId: string) => {
+    try {
+      await AudioStorage.deleteMeeting(meetingId);
+      const remaining = meetings.filter((m) => m.id !== meetingId);
+      setMeetings(remaining);
+
+      if (currentMeetingId === meetingId) {
+        if (remaining.length > 0) {
+          const next = await AudioStorage.getMeeting(remaining[0].id);
+          if (next) {
+            setCurrentMeetingId(next.id);
+            setMeetings((prev) => prev.map((m) => (m.id === next.id ? next : m)));
+          } else {
+            setCurrentMeetingId(remaining[0].id);
+          }
+        } else {
+          setCurrentMeetingId(null);
+          setActiveTab('record');
+        }
+      }
+
+      setTaskAlertMessage('Meeting wurde erfolgreich gelöscht.');
+      setTimeout(() => setTaskAlertMessage(null), 4000);
+    } catch (err) {
+      console.error('Fehler beim Löschen des Meetings:', err);
+      alert('Fehler beim Löschen: ' + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   /**
@@ -309,7 +373,6 @@ export const App: React.FC = () => {
     };
 
     await AudioStorage.saveMeeting(updatedMeeting);
-
     setMeetings((prev) => prev.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m)));
 
     // Next in queue
@@ -428,15 +491,25 @@ export const App: React.FC = () => {
     currentMeeting?.speakers.filter((s) => !s.assignedName || s.confidence < 0.8).length || 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white pb-16 md:pb-0">
-      {/* Header */}
+    <div 
+      className="min-h-screen flex flex-col font-sans transition-colors duration-150 pb-16 md:pb-0"
+      style={{
+        backgroundColor: 'var(--bg-app)',
+        color: 'var(--text-primary)'
+      }}
+    >
+      {/* Executive SaaS Header */}
       <Header
         currentMeeting={currentMeeting}
         meetings={meetings}
         onSelectMeeting={handleSelectMeeting}
         onNewMeeting={handleNewMeeting}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onRequestDeleteCurrentMeeting={handleRequestDeleteCurrentMeeting}
+        onOpenMeetingsManager={() => setActiveTab('meetings')}
         hasApiKey={Boolean(config.apiKey && config.apiKey.trim().length > 0)}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* Navigation (Desktop Tabs & Mobile Bottom Nav) */}
@@ -447,10 +520,17 @@ export const App: React.FC = () => {
         speakerCount={currentMeeting?.speakers.length || 0}
         segmentCount={currentMeeting?.segments.length || 0}
         taskCount={currentMeeting?.tasks.length || 0}
+        meetingCount={meetings.length}
+      />
+
+      {/* Executive KPI Cards Row (Always visible for strategic overview) */}
+      <KpiRow 
+        meetings={meetings}
+        currentMeeting={currentMeeting}
       />
 
       {/* Main Content Areas */}
-      <main className="flex-1 w-full max-w-7xl mx-auto">
+      <main className="flex-1 w-full">
         {activeTab === 'record' && (
           <MeetingRecorder
             onRecordingComplete={handleRecordingComplete}
@@ -478,10 +558,10 @@ export const App: React.FC = () => {
 
         {activeTab === 'transcript' && !currentMeeting && (
           <div className="text-center py-20 px-4">
-            <p className="text-slate-400 text-sm">Kein Meeting ausgewählt.</p>
+            <p className="text-xs text-[var(--text-muted)]">Kein Meeting ausgewählt.</p>
             <button
               onClick={() => setActiveTab('record')}
-              className="mt-3 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold cursor-pointer"
+              className="btn-primary mt-3 text-xs"
             >
               Meeting aufnehmen oder Demo laden
             </button>
@@ -499,10 +579,10 @@ export const App: React.FC = () => {
 
         {activeTab === 'speakers' && !currentMeeting && (
           <div className="text-center py-20 px-4">
-            <p className="text-slate-400 text-sm">Kein Meeting ausgewählt.</p>
+            <p className="text-xs text-[var(--text-muted)]">Kein Meeting ausgewählt.</p>
             <button
               onClick={() => setActiveTab('record')}
-              className="mt-3 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold cursor-pointer"
+              className="btn-primary mt-3 text-xs"
             >
               Meeting aufnehmen oder Demo laden
             </button>
@@ -525,14 +605,25 @@ export const App: React.FC = () => {
 
         {activeTab === 'kanban' && !currentMeeting && (
           <div className="text-center py-20 px-4">
-            <p className="text-slate-400 text-sm">Kein Meeting ausgewählt.</p>
+            <p className="text-xs text-[var(--text-muted)]">Kein Meeting ausgewählt.</p>
             <button
               onClick={() => setActiveTab('record')}
-              className="mt-3 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold cursor-pointer"
+              className="btn-primary mt-3 text-xs"
             >
               Meeting aufnehmen oder Demo laden
             </button>
           </div>
+        )}
+
+        {activeTab === 'meetings' && (
+          <MeetingsManagerView
+            meetings={meetings}
+            currentMeetingId={currentMeetingId}
+            onSelectMeeting={handleSelectMeeting}
+            onRequestDeleteMeeting={handleRequestDeleteMeeting}
+            onNewMeeting={handleNewMeeting}
+            onNavigateTab={setActiveTab}
+          />
         )}
       </main>
 
@@ -542,6 +633,14 @@ export const App: React.FC = () => {
         audioBlob={currentMeeting?.audioBlob}
         onAssignName={handleAssignSpeakerName}
         onDismiss={() => setClarificationRequest(null)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        meeting={deleteTargetMeeting}
+        isOpen={Boolean(deleteTargetMeeting)}
+        onConfirm={handleConfirmDeleteMeeting}
+        onClose={() => setDeleteTargetMeeting(null)}
       />
 
       {/* Settings Modal (OpenRouter & Model Selection) */}

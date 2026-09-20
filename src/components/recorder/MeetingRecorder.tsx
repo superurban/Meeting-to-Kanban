@@ -55,26 +55,21 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
     ctx.clearRect(0, 0, width, height);
 
-    const barCount = 32;
+    const barCount = 36;
     const barWidth = width / barCount - 2;
 
     for (let i = 0; i < barCount; i++) {
       const dataIndex = Math.floor((i / barCount) * frequencyData.length);
       const val = frequencyData[dataIndex] || 0;
       const percent = val / 255;
-      const barHeight = Math.max(4, percent * height * 0.9);
+      const barHeight = Math.max(3, percent * height * 0.85);
 
       const x = i * (barWidth + 2);
       const y = (height - barHeight) / 2;
 
-      // Dynamic gradient based on volume
-      const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
-      gradient.addColorStop(0, '#60a5fa');
-      gradient.addColorStop(1, '#3b82f6');
-
-      ctx.fillStyle = gradient;
+      ctx.fillStyle = '#0f172a';
       ctx.beginPath();
-      ctx.roundRect(x, y, barWidth, barHeight, 2);
+      ctx.roundRect(x, y, barWidth, barHeight, 1.5);
       ctx.fill();
     }
   };
@@ -103,28 +98,28 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
   const handleStopRecording = async () => {
     if (!recorderRef.current) return;
-    setIsRecording(false);
 
     try {
       const { blob, mimeType, durationSeconds } = await recorderRef.current.stop();
-      recorderRef.current = null;
+      setIsRecording(false);
+      setDuration(0);
 
-      const title = meetingTitle.trim() || `Meeting vom ${new Date().toLocaleDateString('de-DE')} ${new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+      const title = meetingTitle.trim() || `Meeting vom ${new Date().toLocaleDateString('de-DE')}`;
       await onRecordingComplete(blob, mimeType, durationSeconds, title);
     } catch (err) {
-      console.error('Fehler beim Beenden der Aufnahme:', err);
-      setErrorMsg('Fehler beim Verarbeiten der Audioaufnahme.');
+      console.error('Fehler beim Stoppen:', err);
+      setErrorMsg('Fehler beim Beenden der Aufnahme.');
+      setIsRecording(false);
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
     setErrorMsg(null);
     const title = meetingTitle.trim() || file.name.replace(/\.[^/.]+$/, '');
 
-    // Estimate duration via Audio element
     const audio = new Audio();
     const objectUrl = URL.createObjectURL(file);
     audio.src = objectUrl;
@@ -142,62 +137,82 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 sm:py-10 space-y-6">
+    <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-4">
       {/* API Key Status Notice if Missing */}
       {!hasApiKey && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-200">
+        <div 
+          className="p-3.5 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
+          style={{
+            backgroundColor: 'var(--status-at-risk-bg)',
+            borderColor: 'var(--status-at-risk-border)',
+            color: 'var(--status-at-risk-text)'
+          }}
+        >
           <div className="flex items-center gap-2.5">
-            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <div>
-              <p className="font-bold text-amber-300 text-sm">OpenRouter API-Key erforderlich für echte Transkription</p>
-              <p className="text-amber-200/80 mt-0.5">
-                Ohne Key kann dein gesprochenes Audio nicht verarbeitet werden. Bitte trage deinen Key ein.
+              <p className="font-semibold text-xs">OpenRouter API-Key erforderlich für echte KI-Transkription</p>
+              <p className="opacity-80 mt-0.5">
+                Ohne API-Key kann dein gesprochenes Audio nicht verarbeitet werden. Bitte trage deinen Key ein.
               </p>
             </div>
           </div>
           <button
             onClick={onOpenSettings}
-            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shrink-0 transition-colors cursor-pointer shadow-sm"
+            className="btn-primary text-xs py-1 px-3 shrink-0"
           >
-            Key jetzt eintragen
+            Key eintragen
           </button>
         </div>
       )}
 
       {/* Title Input Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl">
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+      <div 
+        className="p-4 rounded-lg border shadow-[var(--shadow-subtle)]"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)'
+        }}
+      >
+        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
           Meeting-Bezeichnung
         </label>
         <input
           type="text"
-          placeholder="z.B. Sprint Planning, Projekt-Update, Kunden-Kickoff..."
+          placeholder="z.B. Sprint Planning, Projekt-Sync, Board Meeting..."
           value={meetingTitle}
           onChange={(e) => setMeetingTitle(e.target.value)}
           disabled={isRecording || isProcessing}
-          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base disabled:opacity-50"
+          className="input-saas w-full"
         />
       </div>
 
       {/* Main Recording Console */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl flex flex-col items-center justify-center text-center relative overflow-hidden">
-        {/* Glowing Background Blob */}
-        {isRecording && (
-          <div className="absolute inset-0 bg-blue-600/10 pointer-events-none animate-pulse" />
-        )}
-
+      <div 
+        className="p-6 sm:p-10 rounded-lg border shadow-[var(--shadow-subtle)] flex flex-col items-center justify-center text-center relative overflow-hidden"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)'
+        }}
+      >
         {/* Live Audio Visualizer Canvas */}
-        <div className="w-full max-w-md h-20 mb-6 bg-slate-950/70 rounded-2xl p-2 border border-slate-800/80 flex items-center justify-center">
+        <div 
+          className="w-full max-w-sm h-14 mb-4 rounded-md border p-1.5 flex items-center justify-center"
+          style={{
+            backgroundColor: 'var(--bg-subtle)',
+            borderColor: 'var(--border-color)'
+          }}
+        >
           <canvas
             ref={canvasRef}
             width={320}
-            height={60}
+            height={50}
             className="w-full h-full"
           />
         </div>
 
         {/* Duration Timer */}
-        <div className="text-4xl sm:text-5xl font-mono font-bold tracking-tight text-white mb-6">
+        <div className="text-3xl sm:text-4xl font-mono font-semibold tracking-tight text-[var(--text-primary)] mb-5">
           {formatDuration(duration)}
         </div>
 
@@ -207,34 +222,32 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
             {!isRecording ? (
               <button
                 onClick={handleStartRecording}
-                className="group relative flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                className="btn-primary text-sm py-3 px-6 rounded-md shadow-sm hover:scale-102 active:scale-98 transition-all cursor-pointer flex items-center gap-2"
                 title="Aufnahme starten"
               >
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-white/30 flex items-center justify-center">
-                  <Mic className="w-10 h-10 sm:w-12 sm:h-12 text-white group-hover:scale-110 transition-transform" />
-                </div>
+                <Mic className="w-4 h-4" />
+                <span>Aufnahme starten</span>
               </button>
             ) : (
               <button
                 onClick={handleStopRecording}
-                className="relative flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-red-600 hover:bg-red-500 active:scale-95 text-white shadow-xl shadow-red-600/30 transition-all cursor-pointer animate-pulse"
+                className="btn-danger text-sm py-3 px-6 rounded-md shadow-sm active:scale-98 transition-all cursor-pointer flex items-center gap-2 animate-pulse"
                 title="Aufnahme stoppen & verarbeiten"
               >
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-white/40 flex items-center justify-center">
-                  <Square className="w-8 h-8 sm:w-10 sm:h-10 text-white fill-white" />
-                </div>
+                <Square className="w-4 h-4 fill-white" />
+                <span>Aufnahme stoppen</span>
               </button>
             )}
-            <p className="mt-4 text-sm font-medium text-slate-300">
-              {isRecording ? 'Aufnahme läuft – Klicke zum Stoppen' : 'Mikrofon starten'}
+            <p className="mt-3 text-xs text-[var(--text-muted)]">
+              {isRecording ? 'Aufnahme läuft – Klicke zum Beenden' : 'HTML5 MediaRecorder & 16kHz PCM WAV'}
             </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-4 space-y-3 w-full max-w-xl">
-            <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
+          <div className="flex flex-col items-center justify-center py-2 space-y-2.5 w-full max-w-xl">
+            <RefreshCw className="w-6 h-6 text-[var(--text-primary)] animate-spin" />
             <div>
-              <p className="text-sm font-semibold text-white">{processingStep}</p>
-              <p className="text-xs text-slate-400 mt-0.5">Sprecher werden diarisiert & analysiert...</p>
+              <p className="text-xs font-semibold text-[var(--text-primary)]">{processingStep}</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Sprecher-Diarisierung & KI-Aufgabenextraktion aktiv</p>
             </div>
 
             {/* Live Model Reasoning & Progress Log Box */}
@@ -250,25 +263,38 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
 
         {/* Error message */}
         {errorMsg && (
-          <div className="mt-4 flex items-center gap-2 text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5 text-xs text-left max-w-md">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="mt-3 flex items-center gap-2 text-xs text-left max-w-md badge-off-track">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
       </div>
 
       {/* Alternative Options: Upload & Demo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         {/* Upload Audio File */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-colors flex flex-col justify-between">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="p-2.5 rounded-xl bg-slate-800 text-blue-400">
-              <Upload className="w-5 h-5" />
+        <div 
+          className="p-4 rounded-lg border shadow-[var(--shadow-subtle)] flex flex-col justify-between"
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-color)'
+          }}
+        >
+          <div className="flex items-start gap-3 mb-3">
+            <div 
+              className="p-2 rounded-md shrink-0"
+              style={{
+                backgroundColor: 'var(--bg-subtle)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)'
+              }}
+            >
+              <Upload className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Audio-Datei importieren</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Unterstützt WebM, MP3, WAV, M4A & AAC
+              <h3 className="text-xs font-semibold text-[var(--text-primary)]">Audio-Datei importieren</h3>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                WebM, MP3, WAV, M4A & AAC
               </p>
             </div>
           </div>
@@ -283,41 +309,61 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isRecording || isProcessing}
-            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-2.5 rounded-xl border border-slate-700 transition-colors disabled:opacity-50 cursor-pointer"
+            className="btn-secondary text-xs w-full"
           >
             Datei auswählen
           </button>
         </div>
 
-        {/* Demo Meeting One-Click Loader */}
-        <div className="bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-indigo-900/50 rounded-2xl p-5 hover:border-indigo-800/80 transition-colors flex flex-col justify-between">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400">
-              <Sparkles className="w-5 h-5" />
+        {/* Demo Meeting Loader */}
+        <div 
+          className="p-4 rounded-lg border shadow-[var(--shadow-subtle)] flex flex-col justify-between"
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            borderColor: 'var(--border-color)'
+          }}
+        >
+          <div className="flex items-start gap-3 mb-3">
+            <div 
+              className="p-2 rounded-md shrink-0"
+              style={{
+                backgroundColor: 'var(--bg-subtle)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)'
+              }}
+            >
+              <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Beispiel-Meeting laden</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Sprint Planning mit Florian, Sarah & Alex inkl. Sprecher-Klärung
+              <h3 className="text-xs font-semibold text-[var(--text-primary)]">Beispiel-Meeting laden</h3>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                Sprint Planning mit Florian, Sarah & Alex
               </p>
             </div>
           </div>
           <button
             onClick={onLoadDemo}
             disabled={isRecording || isProcessing}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 rounded-xl shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+            className="btn-primary text-xs w-full"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Demo-Meeting simulieren</span>
+            <span>Demo-Meeting laden</span>
           </button>
         </div>
       </div>
 
       {/* Info Notice */}
-      <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
-        <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+      <div 
+        className="flex items-start gap-2.5 p-3 rounded-md border text-xs"
+        style={{
+          backgroundColor: 'var(--bg-subtle)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-secondary)'
+        }}
+      >
+        <Info className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" />
         <p>
-          <strong>Diarisierungs-Garantie:</strong> Personen, die namentlich angesprochen werden und antworten, werden automatisch mit Namen im Transkript geführt. Bei unklaren Stimmen fragt die App dich mit einem kurzen Tonschnipsel.
+          <strong>Executive Diarisierung:</strong> Personen, die namentlich angesprochen werden und antworten, werden automatisch im Transkript identifiziert. Bei unklaren Stimmen fragt die App dich mit einem präzisen 5s-Tonschnipsel.
         </p>
       </div>
     </div>

@@ -50,7 +50,7 @@ export const SpeakerClarificationModal: React.FC<SpeakerClarificationModalProps>
         (playing) => {
           if (!playing) setActivePlayback(null);
         },
-        5.0 // exactly 5 seconds
+        5.0
       );
     }
   };
@@ -69,7 +69,7 @@ export const SpeakerClarificationModal: React.FC<SpeakerClarificationModalProps>
         (playing) => {
           if (!playing) setActivePlayback(null);
         },
-        undefined // normal playback without 5-second restriction
+        undefined
       );
     }
   };
@@ -82,95 +82,110 @@ export const SpeakerClarificationModal: React.FC<SpeakerClarificationModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden">
-        {/* Glow Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+      <div 
+        className="container-large max-w-md w-full p-5 relative max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          boxShadow: 'var(--shadow-modal)'
+        }}
+      >
+        {/* Header */}
+        <div 
+          className="flex items-center justify-between pb-3 mb-3.5 border-b"
+          style={{ borderColor: 'var(--border-color)' }}
+        >
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
-              <HelpCircle className="w-5 h-5" />
+            <div 
+              className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+              style={{
+                backgroundColor: 'var(--status-at-risk-bg)',
+                color: 'var(--status-at-risk-text)',
+                border: '1px solid var(--status-at-risk-border)'
+              }}
+            >
+              <HelpCircle className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white leading-tight">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)] leading-tight">
                 Sprecher-Zuordnung klären
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
                 5-Sekunden-Hörprobe zur Stimmenerkennung
               </p>
             </div>
           </div>
           <button
             onClick={onDismiss}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+            aria-label="Schließen"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Audio Snippet Player Section */}
-        <div className="my-5 p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-              <Volume2 className="w-3.5 h-3.5 text-blue-400" />
-              Stimmprobe: {request.currentLabel}
+        <div 
+          className="p-3.5 rounded-lg border mb-3.5 space-y-2.5"
+          style={{
+            backgroundColor: 'var(--bg-subtle)',
+            borderColor: 'var(--border-color)'
+          }}
+        >
+          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+            <span className="font-medium text-[var(--text-primary)] flex items-center gap-1.5">
+              <Volume2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>Stimmprobe: {request.currentLabel}</span>
             </span>
-            <span className="bg-blue-500/10 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded text-[11px] font-mono">
+            <span className="badge-neutral text-[11px] font-mono">
               {formatTimestamp(snippetStartTime)} - {formatTimestamp(snippetEndTime)} (5s)
             </span>
           </div>
 
           {/* Transcript Quote */}
-          <blockquote className="text-sm italic text-slate-200 border-l-2 border-blue-500 pl-3 py-1.5 bg-slate-900/50 rounded-r-lg">
+          <blockquote 
+            className="text-xs italic p-2 rounded border-l-2 text-[var(--text-secondary)]"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--text-primary)'
+            }}
+          >
             "{request.bestSegment.text}"
           </blockquote>
 
           {/* Audio Controls */}
-          <div className="space-y-2 pt-1">
-            {/* 1. Primary 5-Second Snippet Button */}
+          <div className="space-y-1.5 pt-1">
             <button
               onClick={handleToggle5sSnippet}
-              className={`w-full py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-xs sm:text-sm transition-all cursor-pointer ${
-                activePlayback === '5s'
-                  ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30'
-                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25'
-              }`}
+              className="btn-primary w-full text-xs py-2"
             >
               {activePlayback === '5s' ? (
                 <>
-                  <Square className="w-4 h-4 fill-white" />
+                  <Square className="w-3.5 h-3.5 fill-current" />
                   <span>5-Sekunden-Schnipsel stoppen</span>
-                  <span className="flex gap-1 items-center ml-2">
-                    <span className="w-1 h-3 bg-white animate-bounce" />
-                    <span className="w-1 h-4 bg-white animate-bounce delay-75" />
-                    <span className="w-1 h-2 bg-white animate-bounce delay-150" />
-                  </span>
                 </>
               ) : (
                 <>
-                  <Play className="w-4 h-4 fill-white" />
+                  <Play className="w-3.5 h-3.5 fill-current" />
                   <span>5-Sekunden-Schnipsel abspielen</span>
                 </>
               )}
             </button>
 
-            {/* 2. Secondary Normal Full Playback Button */}
             <button
               onClick={handleToggleFullPlay}
-              className={`w-full py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 font-medium text-xs transition-colors cursor-pointer border ${
-                activePlayback === 'full'
-                  ? 'bg-red-950/80 border-red-600/60 text-red-300'
-                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
-              }`}
+              className="btn-secondary w-full text-xs py-1.5"
             >
               {activePlayback === 'full' ? (
                 <>
-                  <Square className="w-3.5 h-3.5 fill-red-300" />
+                  <Square className="w-3 h-3 fill-current text-red-500" />
                   <span>Normales Abspielen beenden</span>
                 </>
               ) : (
                 <>
-                  <FastForward className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Nicht erkannt? Gesamten Beitrag normal abspielen</span>
+                  <FastForward className="w-3 h-3 text-[var(--text-muted)]" />
+                  <span>Ganzen Beitrag normal abspielen</span>
                 </>
               )}
             </button>
@@ -178,9 +193,9 @@ export const SpeakerClarificationModal: React.FC<SpeakerClarificationModalProps>
         </div>
 
         {/* Name Input & Suggested Chips */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
               Welche Person spricht hier?
             </label>
             <input
@@ -190,23 +205,23 @@ export const SpeakerClarificationModal: React.FC<SpeakerClarificationModalProps>
               onChange={(e) => setNameInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
               autoFocus
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-saas w-full"
             />
           </div>
 
-          {/* Suggested Names (if available) */}
+          {/* Suggested Names */}
           {request.suggestedNames && request.suggestedNames.length > 0 && (
             <div>
-              <span className="text-[11px] font-medium text-slate-400 block mb-1.5">
-                Vorschläge aus dem Meeting-Kontext:
+              <span className="text-[11px] font-medium text-[var(--text-muted)] block mb-1">
+                Vorschläge aus dem Gespräch:
               </span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1">
                 {request.suggestedNames.map((name) => (
                   <button
                     key={name}
                     type="button"
                     onClick={() => setNameInput(name)}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 transition-colors cursor-pointer"
+                    className="btn-secondary text-[11px] py-0.5 px-2"
                   >
                     + {name}
                   </button>
@@ -217,17 +232,20 @@ export const SpeakerClarificationModal: React.FC<SpeakerClarificationModalProps>
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-6 flex items-center justify-end gap-2 pt-4 border-t border-slate-800">
+        <div 
+          className="mt-4 flex items-center justify-end gap-2 pt-3 border-t"
+          style={{ borderColor: 'var(--border-color)' }}
+        >
           <button
             onClick={onDismiss}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="btn-secondary text-xs"
           >
             Später klären
           </button>
           <button
             onClick={handleConfirm}
             disabled={!nameInput.trim()}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white shadow-md shadow-blue-600/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+            className="btn-primary text-xs"
           >
             <UserCheck className="w-3.5 h-3.5" />
             <span>Name zuweisen</span>
