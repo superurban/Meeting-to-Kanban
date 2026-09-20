@@ -187,13 +187,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
 
           {/* Assignee Filter Dropdown */}
-          <div className="relative flex items-center">
-            <User className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 pointer-events-none" />
+          <div className="flex items-center gap-1.5">
+            <User className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
             <select
               value={filterAssignee}
               onChange={(e) => setFilterAssignee(e.target.value)}
               aria-label="Nach Zuständigen filtern"
-              className="input-saas pl-8 pr-6 text-xs"
+              className="input-saas text-xs py-1.5 px-3 min-w-[200px] sm:min-w-[240px] cursor-pointer font-medium"
             >
               <option value="all">Alle Zuständigen ({tasks.length})</option>
               {assignees.map((name) => (
