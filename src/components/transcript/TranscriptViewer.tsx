@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users, GitMerge, Clock, MessageSquare } from 'lucide-react';
+import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users, GitMerge, Clock, MessageSquare, RefreshCw } from 'lucide-react';
 import { Meeting, TranscriptSegment, Speaker } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
 import { formatTimestamp, formatDuration } from '../../utils/dateUtils';
@@ -11,6 +11,8 @@ interface TranscriptViewerProps {
   onRequestClarification: (speakerId: string) => void;
   onExtractTasks: () => void;
   isExtractingTasks: boolean;
+  onRetranscribe?: () => void;
+  isRetranscribing?: boolean;
   onNavigateTab?: (tab: AppTab) => void;
   onMergeSpeakers?: (sourceSpeakerId: string, targetSpeakerId: string) => void;
 }
@@ -21,6 +23,8 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   onRequestClarification,
   onExtractTasks,
   isExtractingTasks,
+  onRetranscribe,
+  isRetranscribing,
   onNavigateTab,
   onMergeSpeakers
 }) => {
@@ -205,15 +209,30 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
             </div>
           </div>
 
-          {/* Action to trigger Kanban extraction */}
-          <button
-            onClick={onExtractTasks}
-            disabled={isExtractingTasks || meeting.segments.length === 0}
-            className="btn-primary text-xs shrink-0"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{isExtractingTasks ? 'Analysiere Next Steps...' : 'Tasks erstellen'}</span>
-          </button>
+          {/* Action buttons: AI Retranscription & Task Extraction */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {onRetranscribe && (
+              <button
+                type="button"
+                onClick={onRetranscribe}
+                disabled={isRetranscribing || !meeting.audioBlob}
+                className="btn-secondary text-xs shrink-0 flex items-center gap-1.5"
+                title="Das Meeting noch einmal mit dem KI-Sprachmodell analysieren"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRetranscribing ? 'animate-spin text-blue-600' : ''}`} />
+                <span>{isRetranscribing ? 'Transkribiere neu...' : 'Erneute AI-Transkription'}</span>
+              </button>
+            )}
+
+            <button
+              onClick={onExtractTasks}
+              disabled={isExtractingTasks || meeting.segments.length === 0}
+              className="btn-primary text-xs shrink-0 flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{isExtractingTasks ? 'Analysiere Next Steps...' : 'Tasks erstellen'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Sprecher erscheinen als Liste direkt unter Meeting */}
@@ -585,20 +604,20 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
         </div>
       </div>
 
-      {/* 2. EIN Kasten mit dem gesamten Chat (Unified Chat Box mit sanftem Scrollen) */}
+      {/* 2. EIN Kasten mit der Transkription (Leichter Textkasten im Dialogformat) */}
       <div 
         className="rounded-xl border shadow-[var(--shadow-subtle)] bg-[var(--bg-surface)] overflow-hidden flex flex-col"
         style={{ borderColor: 'var(--border-color)' }}
       >
-        {/* Chat Box Header */}
+        {/* Header: 'Transkription' */}
         <div 
           className="px-4 py-3 border-b flex items-center justify-between bg-[var(--bg-subtle)]"
           style={{ borderColor: 'var(--border-color)' }}
         >
           <div className="flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-xs font-semibold text-[var(--text-primary)]">
-              Gesamter Chatverlauf ({meeting.segments.length} Beiträge)
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+              Transkription
             </h3>
           </div>
           <div className="flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
@@ -607,14 +626,14 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                 Stelle fokussiert
               </span>
             )}
-            <span>Scrollbare Ansicht</span>
+            <span>{meeting.segments.length} Beiträge</span>
           </div>
         </div>
 
-        {/* Scrollable Chat Container */}
+        {/* Leichter Textkasten im Dialogstil: Name: Transkription */}
         <div 
           ref={chatContainerRef}
-          className="max-h-[580px] overflow-y-auto divide-y divide-[var(--border-color)] scroll-smooth"
+          className="max-h-[580px] overflow-y-auto p-4 sm:p-5 space-y-2 scroll-smooth font-normal"
         >
           {meeting.segments.map((seg) => {
             const speaker = speakerMap.get(seg.speakerId);
@@ -626,66 +645,50 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
               <div
                 key={seg.id}
                 id={`transcript-seg-${seg.id}`}
-                className={`p-3.5 transition-all duration-200 ${
+                className={`group flex items-start gap-2.5 py-1 px-2.5 rounded-lg transition-all ${
                   isActive 
-                    ? 'bg-blue-50/70 dark:bg-blue-950/40 border-l-4 border-blue-500 pl-3' 
+                    ? 'bg-blue-50/80 dark:bg-blue-950/40 ring-1 ring-blue-500/50' 
                     : isPlaying 
-                      ? 'bg-amber-50/50 dark:bg-amber-950/30 border-l-4 border-amber-500 pl-3'
-                      : 'hover:bg-[var(--bg-hover)]'
+                      ? 'bg-amber-50/60 dark:bg-amber-950/30 ring-1 ring-amber-500/40'
+                      : 'hover:bg-[var(--bg-subtle)]'
                 }`}
               >
-                {/* Segment Header */}
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Speaker Avatar Dot & Name Button */}
-                    <button
-                      type="button"
-                      onClick={() => onRequestClarification(seg.speakerId)}
-                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium transition-transform hover:scale-102 cursor-pointer border"
-                      style={{
-                        backgroundColor: `${speaker?.color || '#3b82f6'}15`,
-                        color: speaker?.color || '#3b82f6',
-                        borderColor: `${speaker?.color || '#3b82f6'}30`
-                      }}
-                      title="Klicken, um Sprecher umzubenennen oder anzuhören"
-                    >
-                      <span 
-                        className="w-2 h-2 rounded-full shrink-0" 
-                        style={{ backgroundColor: speaker?.color || '#3b82f6' }}
-                      />
-                      <span>{speakerName}</span>
-                      <Edit2 className="w-2.5 h-2.5 opacity-60 ml-0.5" />
-                    </button>
-                  </div>
+                {/* Audio Snippet Playback Button (subtle, shows on hover or when playing) */}
+                <button
+                  type="button"
+                  onClick={() => handlePlaySegment(seg)}
+                  className={`mt-0.5 p-1 rounded transition-all cursor-pointer shrink-0 ${
+                    isPlaying 
+                      ? 'opacity-100 text-red-600 bg-red-100 dark:bg-red-950/50' 
+                      : 'opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                  }`}
+                  title={isPlaying ? 'Wiedergabe stoppen' : `Originalton abspielen (${formatTimestamp(seg.startTime)})`}
+                  aria-label="Originalton abspielen"
+                >
+                  {isPlaying ? (
+                    <Square className="w-3.5 h-3.5 fill-current" />
+                  ) : (
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                  )}
+                </button>
 
-                  {/* Audio Snippet Playback & Time */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-mono text-[var(--text-muted)]">
-                      {formatTimestamp(seg.startTime)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handlePlaySegment(seg)}
-                      className={`p-1 rounded border text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer ${
-                        isPlaying ? 'text-red-600 border-red-400 bg-red-50 dark:bg-red-950/30' : ''
-                      }`}
-                      style={{ borderColor: isPlaying ? undefined : 'var(--border-color)' }}
-                      title={isPlaying ? 'Wiedergabe stoppen' : 'Diesen Abschnitt anhören'}
-                      aria-label="Abschnitt anhören"
-                    >
-                      {isPlaying ? (
-                        <Square className="w-3 h-3 text-red-600 fill-current" />
-                      ) : (
-                        <Play className="w-3 h-3 fill-current" />
-                      )}
-                    </button>
-                  </div>
+                {/* Dialog: Name: Transkription */}
+                <div className="flex-1 min-w-0 text-sm leading-relaxed">
+                  <span
+                    className="font-semibold mr-1.5 select-none cursor-pointer hover:underline"
+                    style={{ color: speaker?.color || '#3b82f6' }}
+                    onClick={() => onRequestClarification(seg.speakerId)}
+                    title="Klicken, um Sprecher anzupassen"
+                  >
+                    {speakerName}:
+                  </span>
+                  <span className="text-[var(--text-primary)] select-text font-normal">
+                    {seg.text}
+                  </span>
+                  <span className="ml-2 text-[10px] font-mono text-[var(--text-muted)] opacity-0 group-hover:opacity-75 transition-opacity select-none inline-block">
+                    {formatTimestamp(seg.startTime)}
+                  </span>
                 </div>
-
-                {/* Spoken Text */}
-                <p className="text-sm text-[var(--text-primary)] leading-relaxed font-normal pl-0.5">
-                  {seg.text}
-                </p>
               </div>
             );
           })}

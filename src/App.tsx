@@ -46,6 +46,7 @@ export const App: React.FC = () => {
   const [reasoningLogs, setReasoningLogs] = useState<string[]>([]);
   const [liveReasoningText, setLiveReasoningText] = useState<string>('');
   const [isExtractingTasks, setIsExtractingTasks] = useState(false);
+  const [isRetranscribing, setIsRetranscribing] = useState(false);
   const [taskAlertMessage, setTaskAlertMessage] = useState<string | null>(null);
   const [clarificationRequest, setClarificationRequest] = useState<SpeakerClarificationRequest | null>(null);
   const [clarificationQueue, setClarificationQueue] = useState<SpeakerClarificationRequest[]>([]);
@@ -329,7 +330,7 @@ export const App: React.FC = () => {
    * Reassigns all segments and tasks from sourceSpeakerId to targetSpeakerId,
    * then removes sourceSpeakerId from meeting.speakers.
    */
-  const handleMergeSpeakers = async (sourceSpeakerId: string, targetSpeakerId: string) => {
+  const handleMergeSpeakers = async (sourceSpeakerId: string, targetSpeakerId: string, skipConfirm = false) => {
     if (!currentMeeting || sourceSpeakerId === targetSpeakerId) return;
 
     const sourceSpeaker = currentMeeting.speakers.find((s) => s.id === sourceSpeakerId);
@@ -338,6 +339,13 @@ export const App: React.FC = () => {
 
     const targetName = targetSpeaker.assignedName || targetSpeaker.label;
     const sourceLabel = sourceSpeaker.assignedName || sourceSpeaker.label;
+
+    if (!skipConfirm) {
+      const confirmed = window.confirm(
+        `Möchtest du "${sourceLabel}" wirklich mit "${targetName}" zusammenführen?\n\nAlle gesprochenen Abschnitte und Aufgaben werden dauerhaft "${targetName}" zugeordnet.\n\n⚠️ Diese Aktion kann nicht rückgängig gemacht werden.`
+      );
+      if (!confirmed) return;
+    }
 
     // 1. Reassign all segments of source speaker to target speaker
     const updatedSegments = currentMeeting.segments.map((seg) => {
@@ -397,7 +405,7 @@ export const App: React.FC = () => {
 
   /**
    * Assign a name to an unidentified speaker (from Snippet Clarification Modal or inline edit)
-   * If the name matches an existing speaker, automatically merges them!
+   * If the name matches an existing speaker, asks for confirmation and merges them!
    */
   const handleAssignSpeakerName = async (speakerId: string, assignedName: string) => {
     if (!currentMeeting) return;
@@ -410,8 +418,12 @@ export const App: React.FC = () => {
     );
 
     if (existingSameNameSpeaker) {
-      // Auto-merge speakerId into the existing speaker!
-      await handleMergeSpeakers(speakerId, existingSameNameSpeaker.id);
+      const targetLabel = existingSameNameSpeaker.assignedName || existingSameNameSpeaker.label;
+      const confirmed = window.confirm(
+        `Der Name "${cleanName}" existiert bereits als Sprecher.\n\nMöchtest du diese Stimme dauerhaft mit "${targetLabel}" zusammenführen?\n\n⚠️ Diese Aktion kann nicht rückgängig gemacht werden.`
+      );
+      if (!confirmed) return;
+      await handleMergeSpeakers(speakerId, existingSameNameSpeaker.id, true);
       return;
     }
 
@@ -544,6 +556,73 @@ export const App: React.FC = () => {
   };
 
   /**
+   * Re-run AI transcription & speaker diarization on the current meeting
+   */
+  const handleRetranscribeMeeting = async () => {
+    if (!currentMeeting) return;
+    if (!currentMeeting.audioBlob) {
+      alert('Keine Original-Audiodatei für dieses Meeting vorhanden.');
+      return;
+    }
+
+    const client = new OpenRouterClient(config);
+    if (!client.hasApiKey()) {
+      alert('Bitte trage deinen OpenRouter API-Key in den Einstellungen ein, um die KI-Transkription auszuführen.');
+      setIsSettingsOpen(true);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Möchtest du dieses Meeting noch einmal vollständig von der KI transkribieren lassen?\n\nDas bisherige Transkript und die Sprecherzuordnungen werden dabei anhand der Originalaufnahme neu analysiert.'
+    );
+    if (!confirmed) return;
+
+    setIsRetranscribing(true);
+    setTaskAlertMessage('Erneute AI-Transkription läuft...');
+
+    try {
+      setReasoningLogs((prev) => [
+        ...prev,
+        `[retranscribe.start] Starte erneute AI-Transkription für "${currentMeeting.title}"...`
+      ]);
+
+      const segments = await TranscriptionService.transcribeAudio(
+        currentMeeting.audioBlob,
+        currentMeeting.audioMimeType || 'audio/webm',
+        client,
+        {
+          onProgressLog: (log) => setReasoningLogs((prev) => [...prev, log]),
+          onReasoningChunk: (chunk) => setLiveReasoningText((prev) => prev + chunk),
+          onContentChunk: (chunk) => setLiveReasoningText((prev) => prev + chunk)
+        }
+      );
+
+      const { speakers, clarificationNeeded } = await SpeakerDeductionService.resolveSpeakers(
+        segments,
+        client.hasApiKey() ? client : undefined
+      );
+
+      const updatedMeeting: Meeting = {
+        ...currentMeeting,
+        speakers,
+        segments,
+        status: clarificationNeeded.length > 0 ? 'clarification_needed' : 'ready'
+      };
+
+      await AudioStorage.saveMeeting(updatedMeeting);
+      setMeetings((prev) => prev.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m)));
+      setClarificationQueue(clarificationNeeded);
+      setTaskAlertMessage('Transkription erfolgreich mit KI neu erstellt!');
+      setTimeout(() => setTaskAlertMessage(null), 4000);
+    } catch (err) {
+      console.error('Fehler bei erneuter Transkription:', err);
+      alert('Fehler bei erneuter Transkription: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsRetranscribing(false);
+    }
+  };
+
+  /**
    * Update tasks from Kanban Board (status change, edits, drag & drop)
    */
   const handleUpdateTasks = async (newTasks: Task[]) => {
@@ -631,6 +710,8 @@ export const App: React.FC = () => {
             onRequestClarification={handleRequestClarification}
             onExtractTasks={handleExtractTasksAgain}
             isExtractingTasks={isExtractingTasks}
+            onRetranscribe={handleRetranscribeMeeting}
+            isRetranscribing={isRetranscribing}
             onNavigateTab={setActiveTab}
           />
         )}

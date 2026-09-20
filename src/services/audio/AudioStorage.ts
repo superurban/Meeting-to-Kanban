@@ -103,18 +103,27 @@ export class AudioStorage {
 
   static async getAllMeetings(): Promise<Meeting[]> {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    const meetings: Meeting[] = await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_MEETINGS, 'readonly');
       const store = tx.objectStore(STORE_MEETINGS);
       const req = store.getAll();
-      req.onsuccess = () => {
-        const meetings: Meeting[] = req.result || [];
-        // Sort descending by date
-        meetings.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        resolve(meetings);
-      };
+      req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
     });
+
+    for (const m of meetings) {
+      if (!m.audioBlob) {
+        const blob = await this.getAudioBlob(m.id);
+        if (blob) {
+          m.audioBlob = blob;
+          m.audioUrl = URL.createObjectURL(blob);
+        }
+      }
+    }
+
+    // Sort descending by date
+    meetings.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return meetings;
   }
 
   static async deleteMeeting(id: string): Promise<void> {

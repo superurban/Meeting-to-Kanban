@@ -1,127 +1,141 @@
 export class AudioSnippetPlayer {
+  private static audioContext: AudioContext | null = null;
+  private static currentSource: AudioBufferSourceNode | null = null;
   private static currentAudio: HTMLAudioElement | null = null;
   private static stopTimeout: number | null = null;
-  private static activeCallback?: (isPlaying: boolean, currentTime?: number) => void;
+  private static activeCallback?: (isPlaying: boolean) => void;
+  private static bufferCache = new WeakMap<Blob, AudioBuffer>();
+
+  private static getOrCreateAudioContext(): AudioContext {
+    if (!this.audioContext || this.audioContext.state === 'closed') {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.audioContext = new AudioCtx();
+    }
+    return this.audioContext;
+  }
 
   /**
-   * Plays an audio snippet from startTime to endTime (in seconds).
+   * Plays an authentic audio snippet from the original recording from startTime to endTime.
    * If maxDurationSeconds is provided (e.g. 5.0), playback will stop after this duration.
-   * If not provided or set to undefined, plays the full segment normally.
+   * Uses Web Audio API decodeAudioData for 100% sample-accurate, seek-bug-free playback of the original voice.
    */
   static async playSnippet(
     blobOrUrl: Blob | string | undefined,
     startTime: number,
     endTime: number,
-    textFallback?: string,
+    _textFallback?: string,
     onStatusChange?: (isPlaying: boolean) => void,
     maxDurationSeconds?: number
   ): Promise<void> {
     this.stopCurrent();
+
+    if (!blobOrUrl) {
+      console.warn('[AudioSnippetPlayer] Keine Original-Audiodatei vorhanden.');
+      if (onStatusChange) onStatusChange(false);
+      return;
+    }
 
     if (onStatusChange) {
       this.activeCallback = onStatusChange;
       this.activeCallback(true);
     }
 
-    const naturalDuration = Math.max(0.5, endTime - startTime);
+    const naturalDuration = Math.max(0.3, endTime - startTime);
     const duration = maxDurationSeconds ? Math.min(maxDurationSeconds, naturalDuration) : naturalDuration;
-    const targetEndTime = maxDurationSeconds ? (startTime + duration) : Math.max(endTime, startTime + naturalDuration);
 
-    if (blobOrUrl) {
+    // 1. If it's a real Blob, decode via Web Audio API for 100% reliable original voice playback
+    if (blobOrUrl instanceof Blob) {
       try {
-        const url = typeof blobOrUrl === 'string' ? blobOrUrl : URL.createObjectURL(blobOrUrl);
-        const audio = new Audio(url);
-        this.currentAudio = audio;
+        const ctx = this.getOrCreateAudioContext();
+        if (ctx.state === 'suspended') {
+          await ctx.resume();
+        }
 
-        const handleStop = () => {
-          this.stopCurrent();
-        };
+        let audioBuffer = this.bufferCache.get(blobOrUrl);
+        if (!audioBuffer) {
+          const arrayBuffer = await blobOrUrl.arrayBuffer();
+          // slice(0) copies the buffer so decodeAudioData doesn't detach the original
+          audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+          this.bufferCache.set(blobOrUrl, audioBuffer);
+        }
 
-        audio.onended = handleStop;
-        audio.onerror = () => {
-          this.fallbackSpeech(textFallback, duration);
-        };
+        const safeStartTime = Math.max(0, Math.min(startTime, audioBuffer.duration - 0.05));
+        const safeDuration = Math.min(duration, Math.max(0.2, audioBuffer.duration - safeStartTime));
 
-        const executePlay = async () => {
-          try {
-            if (startTime > 0) {
-              audio.currentTime = startTime;
-            }
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+        this.currentSource = source;
 
-            // Track playback to stop cleanly at targetEndTime
-            audio.ontimeupdate = () => {
-              if (audio.currentTime >= targetEndTime) {
-                handleStop();
-              }
-            };
-
-            await audio.play();
-
-            // Safety timeout: duration + 1.5s buffer
-            this.stopTimeout = window.setTimeout(() => {
-              handleStop();
-            }, (duration + 1.5) * 1000);
-          } catch (err) {
-            console.warn('Audio play failed, using fallback speech:', err);
-            this.fallbackSpeech(textFallback, duration);
+        source.onended = () => {
+          if (this.currentSource === source) {
+            this.stopCurrent();
           }
         };
 
-        if (audio.readyState >= 1) {
-          // Metadata already available, seek and play immediately
-          await executePlay();
-        } else {
-          // Wait for metadata so currentTime seek is guaranteed across all browsers
-          audio.addEventListener('loadedmetadata', () => {
-            executePlay();
-          }, { once: true });
-          audio.load();
-        }
+        source.start(0, safeStartTime, safeDuration);
+
+        // Backup stop timeout
+        this.stopTimeout = window.setTimeout(() => {
+          this.stopCurrent();
+        }, (safeDuration + 0.3) * 1000);
 
         return;
       } catch (err) {
-        console.warn('Audio snippet playback failed, falling back to speech synthesis:', err);
+        console.warn('[AudioSnippetPlayer] Web Audio API decoding failed, attempting HTML5 Audio fallback:', err);
       }
     }
 
-    // Fallback: Web Speech API synthesis or simulated audio
-    this.fallbackSpeech(textFallback, duration);
-  }
+    // 2. Fallback to HTML5 Audio element for remote URLs or if Web Audio decoding failed
+    try {
+      const url = typeof blobOrUrl === 'string' ? blobOrUrl : URL.createObjectURL(blobOrUrl);
+      const audio = new Audio(url);
+      this.currentAudio = audio;
 
-  private static fallbackSpeech(text?: string, maxDuration = 4): void {
-    if ('speechSynthesis' in window && text) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'de-DE';
-      utterance.rate = 1.0;
-      utterance.onend = () => {
+      const handleStop = () => {
         this.stopCurrent();
       };
-      utterance.onerror = () => {
+
+      audio.onended = handleStop;
+      audio.onerror = (e) => {
+        console.error('[AudioSnippetPlayer] HTML5 Audio error:', e);
         this.stopCurrent();
       };
-      window.speechSynthesis.speak(utterance);
-    } else {
-      // Simple tone simulation using Web Audio API
-      try {
-        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(440, ctx.currentTime);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 1.2);
-      } catch {
-        // ignore
+
+      const executePlay = async () => {
+        try {
+          if (startTime > 0 && Number.isFinite(audio.duration) && startTime < audio.duration) {
+            audio.currentTime = startTime;
+          }
+
+          audio.ontimeupdate = () => {
+            if (audio.currentTime >= (startTime + duration)) {
+              handleStop();
+            }
+          };
+
+          await audio.play();
+
+          this.stopTimeout = window.setTimeout(() => {
+            handleStop();
+          }, (duration + 1.0) * 1000);
+        } catch (playErr) {
+          console.error('[AudioSnippetPlayer] Playback execution failed:', playErr);
+          this.stopCurrent();
+        }
+      };
+
+      if (audio.readyState >= 1) {
+        await executePlay();
+      } else {
+        audio.addEventListener('loadedmetadata', () => {
+          executePlay();
+        }, { once: true });
+        audio.load();
       }
-      this.stopTimeout = window.setTimeout(() => {
-        this.stopCurrent();
-      }, 1500);
+    } catch (err) {
+      console.error('[AudioSnippetPlayer] Original audio playback could not be started:', err);
+      this.stopCurrent();
     }
   }
 
@@ -130,6 +144,15 @@ export class AudioSnippetPlayer {
       clearTimeout(this.stopTimeout);
       this.stopTimeout = null;
     }
+    if (this.currentSource) {
+      try {
+        this.currentSource.stop();
+        this.currentSource.disconnect();
+      } catch {
+        // already stopped
+      }
+      this.currentSource = null;
+    }
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio.ontimeupdate = null;
@@ -137,12 +160,10 @@ export class AudioSnippetPlayer {
       this.currentAudio.onerror = null;
       this.currentAudio = null;
     }
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
     if (this.activeCallback) {
-      this.activeCallback(false);
+      const cb = this.activeCallback;
       this.activeCallback = undefined;
+      cb(false);
     }
   }
 }

@@ -217,39 +217,7 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
                     </div>
                   </div>
 
-                  {/* Recognition Status Badge */}
-                  <div>
-                    {isAutoRecognized ? (
-                      <span className="badge-on-track text-[10px]">
-                        <Check className="w-2.5 h-2.5" />
-                        <span>Erkannt</span>
-                      </span>
-                    ) : isIdentified ? (
-                      <span className="badge-neutral text-[10px]">
-                        Zugeordnet
-                      </span>
-                    ) : (
-                      <span className="badge-at-risk text-[10px]">
-                        <AlertCircle className="w-2.5 h-2.5" />
-                        <span>Unklar</span>
-                      </span>
-                    )}
-                  </div>
                 </div>
-
-                {/* Evidence / Reason Note */}
-                {speaker.evidence && (
-                  <p 
-                    className="text-[11px] p-2 rounded-md border mb-2.5 leading-snug"
-                    style={{
-                      backgroundColor: 'var(--bg-subtle)',
-                      borderColor: 'var(--border-color)',
-                      color: 'var(--text-secondary)'
-                    }}
-                  >
-                    <span className="font-semibold text-[var(--text-primary)]">Hinweis:</span> {speaker.evidence}
-                  </p>
-                )}
 
                 {/* Spoken Quote Preview */}
                 <div 
