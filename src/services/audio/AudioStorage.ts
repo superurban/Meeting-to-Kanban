@@ -140,10 +140,14 @@ export class AudioStorage {
 
   // OpenRouter Settings
   static getOpenRouterConfig(): OpenRouterConfig {
+    const envApiKey = (import.meta.env?.VITE_OPENROUTER_API_KEY as string) || '';
     const saved = localStorage.getItem('openrouter_config');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        if (!parsed.apiKey && envApiKey) {
+          parsed.apiKey = envApiKey;
+        }
         // Auto-migrate obsolete or inactive Gemini 2.0/1.5 IDs to the active Gemini 3.8 Flash
         if (!parsed.audioModel || parsed.audioModel.includes('2.0-flash') || parsed.audioModel.includes('1.5')) {
           parsed.audioModel = 'google/gemini-3.8-flash';
@@ -158,7 +162,7 @@ export class AudioStorage {
       }
     }
     return {
-      apiKey: '',
+      apiKey: envApiKey,
       model: 'deepseek/deepseek-chat',
       audioModel: 'google/gemini-3.8-flash',
       summaryModel: 'deepseek/deepseek-chat',
