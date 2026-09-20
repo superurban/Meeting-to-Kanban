@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Users, Kanban, FolderOpen, Trash2, Plus } from 'lucide-react';
+import { FileText, Kanban, FolderOpen, Trash2, Plus } from 'lucide-react';
 import { Meeting } from '../../types';
 
 export type AppTab = 'record' | 'transcript' | 'speakers' | 'kanban' | 'meetings';
@@ -40,18 +40,6 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: FileText,
       badge: segmentCount > 0 ? `${segmentCount}` : null,
       badgeClass: 'badge-neutral'
-    },
-    {
-      id: 'speakers' as AppTab,
-      label: 'Sprecher',
-      icon: Users,
-      badge:
-        pendingClarificationCount > 0
-          ? `${pendingClarificationCount} unklar`
-          : speakerCount > 0
-          ? `${speakerCount}`
-          : null,
-      badgeClass: pendingClarificationCount > 0 ? 'badge-at-risk' : 'badge-neutral'
     },
     {
       id: 'kanban' as AppTab,
@@ -156,7 +144,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           borderColor: 'var(--border-color)'
         }}
       >
-        <div className="grid grid-cols-4 gap-0.5">
+        <div className="grid grid-cols-3 gap-0.5">
           {/* Mobile Aufnahmen / Manager Button */}
           <button
             type="button"
@@ -190,12 +178,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               >
                 <div className="relative">
                   <Icon className="w-4 h-4" />
-                  {tab.id === 'speakers' && pendingClarificationCount > 0 && (
-                    <span 
-                      className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full"
-                      style={{ backgroundColor: 'var(--status-at-risk-text)' }}
-                    />
-                  )}
                 </div>
                 <span className="text-[10px] mt-0.5 tracking-tight truncate max-w-full">
                   {tab.label}

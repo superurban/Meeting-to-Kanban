@@ -326,15 +326,6 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                 <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 <span>Erkannte Sprecher ({meeting.speakers.length})</span>
               </span>
-              {onNavigateTab && (
-                <button
-                  type="button"
-                  onClick={() => onNavigateTab('speakers')}
-                  className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                >
-                  Alle Details & Hörproben
-                </button>
-              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
