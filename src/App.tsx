@@ -171,7 +171,7 @@ export const App: React.FC = () => {
     const meetingDate = new Date().toISOString();
 
     try {
-      setProcessingStep('KI-Transkription & Diarisierung läuft...');
+      setProcessingStep('Transkription läuft...');
       // Real AI transcription of the user's audio with live reasoning stream
       const segments = await TranscriptionService.transcribeAudio(
         audioBlob,
@@ -739,7 +739,7 @@ export const App: React.FC = () => {
       ]);
 
       // 2. Transcribe ONLY the newly appended portion (fast & cost-efficient)
-      updateJob('KI-Transkription & Sprecher-Diarisierung läuft...', 50);
+      updateJob('Transkription läuft...', 50);
       setReasoningLogs((prev) => [
         ...prev,
         `[transcribe.new] Starte KI-Diarisierung des neuen Abschnitts...`
