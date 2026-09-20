@@ -283,6 +283,55 @@ describe('Speaker Deduction & Date Utils', () => {
     expect(updatedSpeakers.find(s => s.assignedName === 'Thomas')).toBeDefined();
   });
 
+  it('correctly detects same speaker in solo recording append without creating duplicate speaker', () => {
+    // Existing meeting has only 1 speaker
+    const existingSpeakers = [
+      { id: 'spk_solo', label: 'Sprecher 1', assignedName: null, confidence: 0, color: '#3b82f6' }
+    ];
+
+    // New appended recording has 1 speaker without explicit different name
+    const newDeducedSpeakers = [
+      { id: 'speaker_1', label: 'Sprecher 1', assignedName: null, confidence: 0, color: '#3b82f6' }
+    ];
+
+    const updatedSpeakers = [...existingSpeakers];
+    const speakerIdRemap = new Map<string, string>();
+
+    newDeducedSpeakers.forEach((newSpk) => {
+      let matchExisting = updatedSpeakers.find((s) => s.id === newSpk.id);
+
+      if (!matchExisting) {
+        const candidateNames = [
+          newSpk.assignedName?.toLowerCase().trim(),
+          newSpk.label?.toLowerCase().trim()
+        ].filter(Boolean) as string[];
+
+        for (const cand of candidateNames) {
+          matchExisting = updatedSpeakers.find((s) => {
+            const sAssigned = s.assignedName?.toLowerCase().trim();
+            const sLabel = s.label?.toLowerCase().trim();
+            return (sAssigned && sAssigned === cand) || sLabel === cand;
+          });
+          if (matchExisting) break;
+        }
+      }
+
+      if (!matchExisting && updatedSpeakers.length === 1 && newDeducedSpeakers.length === 1) {
+        matchExisting = updatedSpeakers[0];
+      }
+
+      if (matchExisting) {
+        speakerIdRemap.set(newSpk.id, matchExisting.id);
+      } else {
+        updatedSpeakers.push(newSpk);
+      }
+    });
+
+    // Remaps to existing speaker and does NOT add a duplicate!
+    expect(speakerIdRemap.get('speaker_1')).toBe('spk_solo');
+    expect(updatedSpeakers.length).toBe(1);
+  });
+
   it('parseRelativeGermanDate correctly calculates "nächste Woche Dienstag" on Sunday 2026-09-20', () => {
     const sundayBase = new Date('2026-09-20T14:00:00Z');
     const quote = 'Äh Torben soll bitte die Spülmaschine anstellen. Fälligkeit nächste Woche Dienstag.';

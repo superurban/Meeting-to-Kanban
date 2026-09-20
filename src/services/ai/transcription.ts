@@ -52,14 +52,22 @@ export class TranscriptionService {
     const base64Audio = await this.blobToBase64(processedBlob);
 
     const knownSpeakersText = context?.existingSpeakers && context.existingSpeakers.length > 0
-      ? `\nBEREITS BEKANNTE TEILNEHMER AUS DIESEM MEETING:\n${context.existingSpeakers
-          .map((s) => `- ${s.assignedName || s.label} (${s.id})`)
-          .join('\n')}\nWenn du eine dieser Stimmen oder Namen wiedererkennst, kannst du die entsprechende speakerId bzw. den Namen verwenden.\n`
+      ? `\nBEREITS BEKANNTE TEILNEHMER DIESES MEETINGS:
+${context.existingSpeakers
+  .map((s, idx) => `${idx + 1}. speakerId: "${s.id}" | Name/Bezeichnung: "${s.assignedName || s.label}"`)
+  .join('\n')}
+
+WICHTIGE ANWEISUNG ZUM SPRECHER-ABGLEICH:
+- Diese Aufnahme wird an ein bestehendes Meeting angehängt.
+- Prüfe bei jedem Sprecher in diesem neuen Tonabschnitt sehr genau, ob es sich um die STIMME eines der BEREITS BEKANNTEN TEILNEHMER handelt.
+- Wenn eine Stimme zu einem bekannten Teilnehmer gehört (anhand Stimmklang, Tonhöhe, Timbre oder Anrede), VERWENDE ZWINGEND dessen bestehende speakerId (z.B. "${context.existingSpeakers[0]?.id}") und das dazugehörige speakerLabel (z.B. "${context.existingSpeakers[0]?.assignedName || context.existingSpeakers[0]?.label}").
+- Wenn das bisherige Meeting nur einen einzigen Sprecher hatte und in dieser neuen Aufnahme ebenfalls nur eine Person spricht, handelt es sich um dieselbe Person – verwende dann dieselbe speakerId "${context.existingSpeakers[0]?.id}".
+- Nur wenn es sich unmissverständlich um eine NEUE, bisher unbeteiligte Person handelt, vergib eine neue Kennung.\n`
       : '';
 
     const prompt = `Transkribiere diese Audioaufnahme eines Meetings mit präziser Sprecher-Diarisierung.
 Aufgaben:
-1. Erkenne unterschiedliche Sprecher und weise ihnen fortlaufende Kennungen zu (z.B. speaker_1, speaker_2, speaker_3).
+1. Erkenne unterschiedliche Sprecher. Falls oben bereits bekannte Teilnehmer aufgeführt sind, ordne die Stimmen diesen zu; andernfalls weise fortlaufende Kennungen zu (z.B. speaker_1, speaker_2).
 2. Erfasse präzise Zeitstempel für Start- und Endzeit jedes Sprechbeitrags in Sekunden.
 3. Transkribiere den tatsächlich gesprochenen Text im genauen Originalwortlaut (KEINE erfundenen Dialoge!).
 ${knownSpeakersText}

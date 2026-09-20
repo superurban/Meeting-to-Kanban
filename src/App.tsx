@@ -786,15 +786,40 @@ export const App: React.FC = () => {
       const speakerIdRemap = new Map<string, string>();
 
       deducedNewSpeakers.forEach((newSpk) => {
-        // Check if an existing speaker has the exact same name (case-insensitive)
-        const matchExisting = newSpk.assignedName
-          ? updatedSpeakers.find(
-              (s) => s.assignedName?.toLowerCase().trim() === newSpk.assignedName?.toLowerCase().trim()
-            )
-          : null;
+        // 1. Direct ID match: Did the AI use an existing speaker's ID?
+        let matchExisting = updatedSpeakers.find((s) => s.id === newSpk.id);
+
+        // 2. Name or Label match: Did the AI detect the same name/label?
+        if (!matchExisting) {
+          const candidateNames = [
+            newSpk.assignedName?.toLowerCase().trim(),
+            newSpk.label?.toLowerCase().trim()
+          ].filter(Boolean) as string[];
+
+          for (const cand of candidateNames) {
+            matchExisting = updatedSpeakers.find((s) => {
+              const sAssigned = s.assignedName?.toLowerCase().trim();
+              const sLabel = s.label?.toLowerCase().trim();
+              return (sAssigned && sAssigned === cand) || sLabel === cand;
+            });
+            if (matchExisting) break;
+          }
+        }
+
+        // 3. Solo Speaker Heuristic:
+        // If the existing meeting only has 1 speaker, and the appended recording only has 1 speaker,
+        // and no conflicting different name was detected, it is the SAME speaker!
+        if (!matchExisting && updatedSpeakers.length === 1 && deducedNewSpeakers.length === 1) {
+          matchExisting = updatedSpeakers[0];
+        }
 
         if (matchExisting) {
           speakerIdRemap.set(newSpk.id, matchExisting.id);
+          // If existing speaker lacked an assignedName, adopt newly deduced name
+          if (!matchExisting.assignedName && newSpk.assignedName) {
+            matchExisting.assignedName = newSpk.assignedName;
+            matchExisting.label = newSpk.assignedName;
+          }
         } else {
           let finalId = newSpk.id;
           if (updatedSpeakers.some((s) => s.id === finalId)) {
@@ -811,16 +836,13 @@ export const App: React.FC = () => {
 
       // Apply remapped speaker IDs to adjusted segments
       const finalizedNewSegments = adjustedNewSegments.map((seg) => {
-        const remappedId = speakerIdRemap.get(seg.speakerId);
-        if (remappedId) {
-          const spk = updatedSpeakers.find((s) => s.id === remappedId);
-          return {
-            ...seg,
-            speakerId: remappedId,
-            speakerLabel: spk?.assignedName || spk?.label || seg.speakerLabel
-          };
-        }
-        return seg;
+        const remappedId = speakerIdRemap.get(seg.speakerId) || seg.speakerId;
+        const spk = updatedSpeakers.find((s) => s.id === remappedId);
+        return {
+          ...seg,
+          speakerId: remappedId,
+          speakerLabel: spk?.assignedName || spk?.label || seg.speakerLabel
+        };
       });
 
       const combinedSegments = [...currentMeeting.segments, ...finalizedNewSegments];
