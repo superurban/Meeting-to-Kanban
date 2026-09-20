@@ -82,9 +82,6 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             <span>•</span>
             <span>{meeting.tasks?.length || 0} Aufgaben</span>
           </div>
-          <p className="text-xs text-[var(--text-secondary)] pt-1 border-t border-[var(--border-color)]">
-            Die Audio-Aufnahme, alle Segmente im Transkript sowie die zugeordneten Kanban-Tasks werden dauerhaft aus dem lokalen Speicher gelöscht.
-          </p>
         </div>
 
         {/* Action Buttons */}

@@ -73,11 +73,11 @@ export const Header: React.FC<HeaderProps> = ({
           {meetings.length > 0 && (
             <div className="flex items-center gap-1.5">
               {/* Meeting Dropdown Selector */}
-              <div className="relative flex items-center">
-                <FolderOpen className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 pointer-events-none" />
+              <div className="flex items-center gap-1.5">
+                <FolderOpen className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
                 <select
                   aria-label="Meeting auswählen"
-                  className="input-saas pl-8 pr-6 text-xs max-w-[150px] sm:max-w-[220px] truncate"
+                  className="input-saas text-xs py-1.5 px-2.5 w-[190px] sm:w-[280px] md:w-[340px] truncate font-medium cursor-pointer"
                   value={currentMeeting?.id || ''}
                   onChange={(e) => {
                     if (e.target.value === '__manage__') {
