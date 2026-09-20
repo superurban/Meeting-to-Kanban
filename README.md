@@ -1,49 +1,30 @@
-# Meeting to Kanban 🎙️ ➔ 📋
+# Meeting to Kanban
 
-> **Vom gesprochenen Meeting direkt zum priorisierten Kanban-Board.**  
-> Lokale Audioaufnahme, multimodale KI-Transkription mit präziser Sprecher-Diarisierung, intelligente Sprecher-Deduktion und vollautomatische Aufgaben-Extraktion – schnell, datenschutzfreundlich und direkt im Browser.
+Web-App, die Audioaufnahmen von Meetings transkribiert, Sprecher trennt und daraus automatisch Aufgaben für ein Kanban-Board generiert.
 
----
-
-## ✨ Features
-
-### 🎙️ Audioaufnahme & Lokale Speicherung
-- **Live-Aufnahme:** Mikrofonaufnahme mit Pegel-Wellenform, Pause-, Fortsetzen- und Stopp-Funktionen.
-- **Automatisierte Audio-Optimierung:** Konvertierung in 16 kHz Mono PCM WAV im Browser für höchste Transkriptionsgenauigkeit.
-- **100% Lokale Daten:** Audiodaten und Meetings werden sicher in der Browser-Datenbank (**IndexedDB**) gespeichert.
-
-### 🤖 Multimodale KI-Transkription & Diarisierung
-- **State-of-the-Art Modelle:** Anbindung an OpenRouter (z.B. Google Gemini 3.8 Flash, DeepSeek Chat).
-- **Sprecher-Diarisierung:** Erkennung und Konsistenz-Clusterung unterschiedlicher Sprecher über das gesamte Audio.
-- **Erneute AI-Transkription:** Jederzeit erneute Transkription mit Live-Reasoning und Fortschritts-Stream auf Knopfdruck.
-
-### ⏱️ Interaktive Zeitleiste & Dialog-Transkript
-- **Minuten-Zeitleiste:** Visuelle Zeitleiste mit farbigen Sprechermarkern und Hover-Vorschau der gesprochenen Inhalte.
-- **Synchrones Scrubbing:** Klick in die Zeitleiste springt exakt an die entsprechende Stelle im Transkript (mit automatischem Scrolling).
-- **Leichtes Dialog-Design:** Schlankes Transkript im Format `Name: Text` mit Sofort-Audio-Wiedergabe pro Sprechbeitrag.
-
-### 👥 Sprecherverwaltung & Original-Audio
-- **Web Audio API:** Sample-genaue Wiedergabe des **echten Originaltons** statt synthetischer Stimmen.
-- **Sprecher zuordnen:** Inline-Umbenennung von Sprechern direkt im Transkript-Kopf.
-- **Sprecher zusammenführen (Merge):** Verschmelzen von Sprechern mit Sicherheitsabfrage vor irreversibler Neuzuweisung aller Segmente und Aufgaben.
-
-### 📋 Intelligentes Kanban Board
-- **Automatische Task-Extraktion:** KI analysiert das Meeting auf konkrete To-Dos, Beschreibungen und Prioritäten (*Low*, *Medium*, *High*, *Urgent*).
-- **Deutsche Datumslogik:** Erkennt relative Termine wie *„bis nächsten Freitag“*, *„übermorgen“* oder *„Ende der Woche“*.
-- **Interaktiver Workflow:** Spalten *To Do*, *In Progress*, *Done* mit Suchfunktion, Filtern und manuellem Hinzufügen.
-- **Belohnung:** Konfetti-Animation beim Erledigen von Aufgaben! 🎉
-
-### 📁 Meetings-Verwaltung & SaaS UI
-- **Direktes Umbennen:** Meeting-Titel können direkt per Klick im Header umbenannt und sofort gespeichert werden.
-- **Aufnahmen-Schnellzugriff:** Dropdown und Schnell-Lösch-Button direkt in der Hauptnavigation.
-- **Executive SaaS Design:** Klares, leichtes Design mit nahtlosem Wechsel zwischen **Light- & Dark-Mode**.
-- **Progressive Web App (PWA):** Als App installierbar und mobil optimiert.
+Alle Audiodaten und Transkripte werden lokal im Browser in IndexedDB gespeichert. Zur Transkription und Aufgaben-Extraktion wird OpenRouter (standardmäßig Google Gemini & DeepSeek) angebunden.
 
 ---
 
-## 🚀 Schnellstart
+## Funktionen
 
-### 1. Repository klonen & Abhängigkeiten installieren
+- **Audioaufnahme & Konvertierung**: Direkte Aufnahme im Browser mit Pegelanzeige. Vor dem Upload wird das Audio clientseitig in 16-kHz-Mono-WAV umgerechnet, um Übertragungsfehler und Dateigröße zu minimieren.
+- **Sprechererkennung (Diarisierung)**: Erkennt Sprecherwechsel, ordnet Segmente Stimmen zu und erlaubt das Umbenennen sowie das Zusammenführen von Sprechern.
+- **Originalton-Wiedergabe**: Kein synthetisches Vorlesen – Schnipsel und einzelne Sätze lassen sich per Web Audio API im echten Originalton anhören.
+- **Interaktive Zeitleiste**: Zeigt Sprecherblöcke auf einer Minutenachse. Klicks in die Zeitleiste springen synchron an die Textstelle im Transkript.
+- **Kanban-Board**: Erkennt Aufgaben, Verantwortliche und deutsche Fristen (z. B. „bis nächsten Freitag“ oder „übermorgen“) und ordnet sie in Spalten (*To Do*, *In Progress*, *Done*) ein.
+- **Meetings-Verwaltung**: Meetings können direkt im Header umbenannt, durchsucht oder gelöscht werden.
+- **Dark- & Light-Mode**: Passendes Theme für dunkle und helle Systemeinstellungen.
+
+---
+
+## Installation & Setup
+
+### Voraussetzungen
+- Node.js (Version 18 oder neuer)
+- Ein API-Key von [OpenRouter](https://openrouter.ai/keys)
+
+### 1. Repository klonen und Pakete installieren
 
 ```bash
 git clone https://github.com/superurban/Meeting-to-Kanban.git
@@ -51,21 +32,21 @@ cd Meeting-to-Kanban
 npm install
 ```
 
-### 2. API-Key konfigurieren (.env)
+### 2. API-Key hinterlegen
 
-Kopiere die `.env.example`-Datei zu `.env`:
+Erstelle eine `.env`-Datei auf Basis der Vorlage:
 
 ```bash
 cp .env.example .env
 ```
 
-Trage deinen [OpenRouter API-Key](https://openrouter.ai/keys) in `.env` ein:
+Füge deinen OpenRouter-Key ein:
 
 ```env
-VITE_OPENROUTER_API_KEY=sk-or-v1-dein-key-hier...
+VITE_OPENROUTER_API_KEY=sk-or-v1-...
 ```
 
-*(Hinweis: Die `.env`-Datei ist in `.gitignore` eingetragen und wird **nicht** mit GitHub synchronisiert. Alternativ kann der Key auch direkt im Einstellungsmenü der Web-App hinterlegt werden.)*
+*Hinweis: Die `.env`-Datei wird nicht ins Git-Repository übernommen. Alternativ kann der Key auch direkt im Einstellungs-Dialog der Oberfläche eingetragen werden.*
 
 ### 3. Entwicklungsserver starten
 
@@ -73,35 +54,22 @@ VITE_OPENROUTER_API_KEY=sk-or-v1-dein-key-hier...
 npm run dev
 ```
 
-Die App ist nun unter `http://localhost:5173` erreichbar.
+Die Anwendung läuft standardmäßig unter `http://localhost:5173`.
 
 ---
 
-## 🛠️ Befehle
+## Verfügbare Skripte
 
-| Befehl | Beschreibung |
-|---|---|
-| `npm run dev` | Startet den Vite-Entwicklungsserver mit Hot Module Replacement (HMR). |
-| `npm run build` | Führt TypeScript-Prüfung (`tsc -b`) durch und baut das Produktions-Bundle. |
-| `npx vitest run` | Führt die Unit- und Integrationstests (Sprecher-Deduktion, Datums-Parser, Task-Extraktion) aus. |
-| `npm run preview` | Startet einen lokalen Webserver zur Vorschau des Produktions-Builds. |
+- `npm run dev`: Startet die Vite-Entwicklungsumgebung.
+- `npm run build`: Baut das Projekt via TypeScript (`tsc -b`) und Vite für die Produktion.
+- `npx vitest run`: Führt die Unit- und Integrationstests aus (Datums-Parsing, Sprecher-Deduktion, Task-Extraktion).
+- `npm run preview`: Startet eine lokale Vorschau des gebauten `dist`-Ordners.
 
 ---
 
-## 🔒 Datenschutz & Sicherheit
+## Technische Details
 
-- **Lokale Datenhaltung:** Aufnahmen, Transkripte und Aufgaben werden lokal in deinem Browser (IndexedDB / LocalStorage) gespeichert.
-- **Keine Cloud-Datenbank:** Es gibt kein zentrales Backend, das deine Aufnahmen speichert.
-- **Sichere Secrets:** API-Tokens verbleiben in der lokalen `.env` bzw. im Browser-Speicher und werden niemals in Repositories committed.
-
----
-
-## 🏗️ Tech-Stack
-
-- **Frontend:** React 19, TypeScript, Vite
-- **Styling:** Tailwind CSS (v4), Lucide Icons
-- **Audio:** Web Audio API, MediaRecorder API, Browser-native WAV-Konvertierung
-- **KI:** OpenRouter API (Google Gemini 3.8 Flash, DeepSeek Chat)
-- **State & Storage:** IndexedDB (idb), LocalStorage
-- **Testing:** Vitest
-- **PWA:** vite-plugin-pwa, Workbox
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS
+- **Audioverarbeitung**: MediaRecorder API, Web Audio API (AudioContext)
+- **KI-Schnittstelle**: OpenRouter API (`google/gemini-3.8-flash` für multimodales Audio, `deepseek/deepseek-chat` für Aufgabenextraktion)
+- **Persistenz**: IndexedDB via `idb` für Audiodaten und Meeting-Metadaten, LocalStorage für Benutzereinstellungen
