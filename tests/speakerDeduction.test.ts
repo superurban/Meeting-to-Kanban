@@ -55,6 +55,23 @@ describe('Speaker Deduction & Date Utils', () => {
     expect(spk3Clarification?.bestSegment.id).toBe('s3');
   });
 
+  it('correctly deduces Fred and Peter from conversational dialogue with greetings', async () => {
+    const segments = [
+      { id: '1', speakerId: 'spk_1', speakerLabel: 'Sprecher 1', startTime: 0, endTime: 2, text: 'Hola.' },
+      { id: '2', speakerId: 'spk_1', speakerLabel: 'Sprecher 1', startTime: 2.1, endTime: 4, text: 'Dies ist jetzt ein Test.' },
+      { id: '3', speakerId: 'spk_1', speakerLabel: 'Sprecher 1', startTime: 4.1, endTime: 8, text: 'Ich verrate meinen Namen nicht, aber neben mir sitzt Thomas. Hallo Thomas.' },
+      { id: '4', speakerId: 'spk_2', speakerLabel: 'Sprecher 2', startTime: 8.5, endTime: 13, text: 'Hallo. Ähm, soll ich jetzt deinen Namen sagen? Hallo Fred, grüß dich.' },
+      { id: '5', speakerId: 'spk_1', speakerLabel: 'Sprecher 1', startTime: 13.5, endTime: 17, text: 'Jetzt hast du meinen Namen genannt. Hallo Peter.' }
+    ];
+
+    const { speakers } = await SpeakerDeductionService.resolveSpeakers(segments);
+    const spk1 = speakers.find((s) => s.id === 'spk_1');
+    const spk2 = speakers.find((s) => s.id === 'spk_2');
+
+    expect(spk1?.assignedName).toBe('Fred');
+    expect(spk2?.assignedName).toBe('Peter');
+  });
+
   it('TaskExtractorService extracts tasks with title, assignee, dueDate, and description', async () => {
     const { TaskExtractorService } = await import('../src/services/ai/taskExtractor');
     const segments = [

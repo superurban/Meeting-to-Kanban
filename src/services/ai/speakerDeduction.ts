@@ -34,7 +34,8 @@ export class SpeakerDeductionService {
     const blacklistWords = new Set([
       'aber', 'also', 'alles', 'bitte', 'danke', 'genau', 'hallo', 'hier', 'heute', 'immer',
       'jetzt', 'klar', 'nein', 'nicht', 'oder', 'prima', 'richtig', 'super', 'tatsächlich',
-      'und', 'vielleicht', 'wirklich', 'ja', 'okay', 'ok', 'gut', 'team', 'alle', 'zusammen'
+      'und', 'vielleicht', 'wirklich', 'ja', 'okay', 'ok', 'gut', 'team', 'alle', 'zusammen',
+      'test', 'ähm', 'ehm', 'soll', 'name', 'mein', 'dein', 'dies', 'hola', 'hallo', 'servus', 'moin'
     ]);
 
     // 1. Initialize all unique speakers in speakerMap first
@@ -52,58 +53,103 @@ export class SpeakerDeductionService {
       }
     }
 
-    // 2. Analyze conversation turns and direct naming
+    // 2. Analyze conversation turns sentence-by-sentence and turn transitions
     for (let i = 0; i < segments.length; i++) {
       const seg = segments[i];
 
-      // A: Response greeting to the previous speaker (e.g. "Hallo Alex,", "Danke Alex,")
-      const responseGreetingPattern = /^(?:hallo|hey|hi|guten morgen|danke|vielen dank),?\s+([A-ZÄÖÜ][a-zäöüß]+)[,!. ]/i;
-      const greetingMatch = seg.text.match(responseGreetingPattern);
-      if (greetingMatch && greetingMatch[1]) {
-        const name = greetingMatch[1].trim();
-        if (!blacklistWords.has(name.toLowerCase()) && name.length > 2) {
-          if (i > 0) {
-            const prevSeg = segments[i - 1];
-            if (prevSeg.speakerId !== seg.speakerId) {
-              const target = speakerMap.get(prevSeg.speakerId);
-              if (target && (!target.assignedName || target.confidence! < 0.8)) {
-                target.assignedName = name;
-                target.confidence = 0.9;
-                target.evidence = `Wurde von ${seg.speakerLabel || seg.speakerId} mit "${greetingMatch[0].trim()}" begrüßt.`;
+      // Collect third parties explicitly mentioned as sitting nearby / third person in this turn:
+      // e.g. "neben mir sitzt Thomas", "hier sitzt Sarah"
+      const thirdPartyRegex = /(?:neben mir sitzt|hier sitzt|neben mir|bei mir sitzt|kollege|chef)\s+([A-ZÄÖÜ][a-zäöüß]+)/gi;
+      const thirdPartyNamesInSegment = new Set<string>();
+      let tpMatch: RegExpExecArray | null;
+      while ((tpMatch = thirdPartyRegex.exec(seg.text)) !== null) {
+        if (tpMatch[1]) {
+          thirdPartyNamesInSegment.add(tpMatch[1].trim().toLowerCase());
+        }
+      }
+
+      const sentences = seg.text.split(/(?<=[.!?])\s+/);
+
+      for (const rawSentence of sentences) {
+        const sentence = rawSentence.trim();
+        if (!sentence) continue;
+
+        // Pattern A: Self-introduction ("Ich bin Alex", "Mein Name ist Peter", "Hier spricht Florian")
+        const selfIntroMatch = sentence.match(/(?:ich bin|mein name ist|hier ist|hier spricht)\s+([A-ZÄÖÜ][a-zäöüß]+)/i);
+        if (selfIntroMatch && selfIntroMatch[1]) {
+          const name = selfIntroMatch[1].trim();
+          if (!blacklistWords.has(name.toLowerCase()) && name.length > 2) {
+            const currentSpeaker = speakerMap.get(seg.speakerId);
+            if (currentSpeaker && (!currentSpeaker.assignedName || currentSpeaker.confidence! < 0.9)) {
+              currentSpeaker.assignedName = name;
+              currentSpeaker.confidence = 0.95;
+              currentSpeaker.evidence = `Hat sich selbst vorgestellt: "${sentence}"`;
+            }
+          }
+        }
+
+        // Pattern B: Greeting / Addressing the other conversation partner (e.g. "Hallo Fred", "Grüß dich Peter", "Danke Sarah")
+        const greetingPatterns = [
+          /(?:hallo|hey|hi|guten morgen|grüß dich|moin|servus|danke|vielen dank),?\s+([A-ZÄÖÜ][a-zäöüß]+)/i,
+          /([A-ZÄÖÜ][a-zäöüß]+),?\s+(?:grüß dich|hallo|hi|guten morgen|danke)/i
+        ];
+
+        for (const pattern of greetingPatterns) {
+          const match = sentence.match(pattern);
+          if (match && match[1]) {
+            const candidate = match[1].trim();
+            if (!blacklistWords.has(candidate.toLowerCase()) && candidate.length > 2) {
+              // Ignore if clearly referring to an absent or in-room 3rd party
+              if (thirdPartyNamesInSegment.has(candidate.toLowerCase()) || /(?:neben mir sitzt|kollege|chef|mit|über)\s+/i.test(sentence)) {
+                continue;
+              }
+
+              // In a conversation, greeting a person addresses the conversation partner!
+              let partnerSpeakerId: string | null = null;
+              if (i > 0 && segments[i - 1].speakerId !== seg.speakerId) {
+                partnerSpeakerId = segments[i - 1].speakerId;
+              } else if (i + 1 < segments.length && segments[i + 1].speakerId !== seg.speakerId) {
+                partnerSpeakerId = segments[i + 1].speakerId;
+              } else {
+                const others = Array.from(speakerMap.keys()).filter((id) => id !== seg.speakerId);
+                if (others.length === 1) {
+                  partnerSpeakerId = others[0];
+                }
+              }
+
+              if (partnerSpeakerId) {
+                const partner = speakerMap.get(partnerSpeakerId);
+                if (partner && (!partner.assignedName || partner.confidence! < 0.8)) {
+                  partner.assignedName = candidate;
+                  partner.confidence = 0.9;
+                  partner.evidence = `Wurde von ${seg.speakerLabel || seg.speakerId} mit "${match[0].trim()}" angesprochen.`;
+                }
               }
             }
           }
         }
-      }
 
-      // B: Hand-off address or question to the next speaker (e.g. "Florian, kannst du...", "Was sagst du, Florian?")
-      const handoffPatterns = [
-        /(?:frage an|was meinst du|was sagst du|wie sieht es aus bei dir),?\s+([A-ZÄÖÜ][a-zäöüß]+)/i,
-        /([A-ZÄÖÜ][a-zäöüß]+),\s*(?:kannst|könntest|hast|machst|übernimmst|wirst|wie|was|denkst|meinst|bist)/i
-      ];
+        // Pattern C: Hand-off questions to the next speaker (e.g. "Florian, kannst du...", "Was sagst du, Florian?")
+        const handoffPatterns = [
+          /(?:frage an|was meinst du|was sagst du|wie sieht es aus bei dir),?\s+([A-ZÄÖÜ][a-zäöüß]+)/i,
+          /([A-ZÄÖÜ][a-zäöüß]+),\s*(?:kannst|könntest|hast|machst|übernimmst|wirst|wie|was|denkst|meinst|bist)/i
+        ];
 
-      let handoffName: string | null = null;
-      for (const pattern of handoffPatterns) {
-        const match = seg.text.match(pattern);
-        if (match && match[1]) {
-          const candidate = match[1].trim();
-          if (!blacklistWords.has(candidate.toLowerCase()) && candidate.length > 2) {
-            handoffName = candidate;
-            seg.addressedTo = candidate;
-            break;
-          }
-        }
-      }
-
-      // If a handoff address occurred, the speaker in the next segment (i + 1) is the addressed person
-      if (handoffName && i + 1 < segments.length) {
-        const nextSeg = segments[i + 1];
-        if (nextSeg.speakerId !== seg.speakerId) {
-          const targetSpeaker = speakerMap.get(nextSeg.speakerId);
-          if (targetSpeaker && (!targetSpeaker.assignedName || targetSpeaker.confidence! < 0.8)) {
-            targetSpeaker.assignedName = handoffName;
-            targetSpeaker.confidence = 0.9;
-            targetSpeaker.evidence = `Wurde in Abschnitt ${i + 1} ("${seg.text.slice(0, 40)}...") direkt mit "${handoffName}" angesprochen und antwortete darauf in Abschnitt ${i + 2}.`;
+        for (const pattern of handoffPatterns) {
+          const match = sentence.match(pattern);
+          if (match && match[1]) {
+            const candidate = match[1].trim();
+            if (!blacklistWords.has(candidate.toLowerCase()) && candidate.length > 2) {
+              seg.addressedTo = candidate;
+              if (i + 1 < segments.length && segments[i + 1].speakerId !== seg.speakerId) {
+                const targetSpeaker = speakerMap.get(segments[i + 1].speakerId);
+                if (targetSpeaker && (!targetSpeaker.assignedName || targetSpeaker.confidence! < 0.8)) {
+                  targetSpeaker.assignedName = candidate;
+                  targetSpeaker.confidence = 0.9;
+                  targetSpeaker.evidence = `Wurde in Abschnitt ${i + 1} ("${seg.text.slice(0, 40)}...") direkt mit "${candidate}" angesprochen und antwortete darauf.`;
+                }
+              }
+            }
           }
         }
       }
@@ -120,13 +166,26 @@ export class SpeakerDeductionService {
     client: OpenRouterClient
   ): Promise<Map<string, { name: string; confidence: number; evidence: string }>> {
     const formattedTranscript = segments
-      .map((s, idx) => `[Segment ${idx + 1} | ${s.speakerId} (${s.speakerLabel})]: "${s.text}"`)
+      .map((s, idx) => `[Abschnitt ${idx + 1} | ${s.speakerId}]: "${s.text}"`)
       .join('\n');
 
-    const prompt = `Analysiere folgendes Meeting-Transkript und ermittle die Klarnamen der beteiligten Sprecher.
-Achte besonders darauf:
-- Wenn ein Sprecher eine Person namentlich anspricht (z.B. "Florian, kannst du...", "Sarah, wie steht es mit...") und daraufhin der nächste Sprecher antwortet, gehört der Name zu diesem antwortenden Sprecher!
-- Wenn sich jemand selbst vorstellt ("Hier ist Alex", "Ich bin Alex").
+    const prompt = `Du bist ein erfahrener Konversationsanalytiker. Deine Aufgabe ist es, für jede Sprecher-ID im Transkript den tatsächlichen Klarnamen der sprechenden Person zu ermitteln.
+
+BEACHTE DIESE PRÄZISEN REGELN FÜR DIE SPRECHERZUWEISUNG:
+1. DIREKTE ANREDE DES GESPRÄCHSPARTNERS:
+   - Wenn Sprecher B sagt: "Hallo Fred, grüß dich", "Danke Fred" oder "Was sagst du, Fred?", spricht B damit seinen Gegenüber an (den Vorredner oder nächsten Redner, z. B. Sprecher A). Der Name "Fred" gehört folglich zu SPRECHER A, NIEMALS zu Sprecher B!
+   - Wenn Sprecher A anschließend bestätigt (z. B. "Jetzt hast du meinen Namen genannt"), beweist dies zweifelsfrei: Sprecher A ist Fred!
+   - Wenn Sprecher A daraufhin sagt: "Hallo Peter", spricht A seinen Gegenüber an -> Sprecher B ist Peter!
+
+2. SELBSTVORSTELLUNG:
+   - Sätze wie "Hier ist Alex", "Ich bin Alex", "Mein Name ist..." weisen den Namen direkt dem AKTUELLEN Sprecher zu.
+
+3. ERWÄHNUNG DRITTER PERSONEN (Ausschlussregel):
+   - Wenn ein Sprecher von Dritten erzählt ("Neben mir sitzt Thomas", "Ich habe mit Sarah telefoniert"), gehört dieser Name NICHT automatisch zu einem der aktiven Sprecher, solange sich diese dritte Person nicht selbst aktiv mit eigener Stimme zu Wort meldet.
+
+4. KONSISTENZ:
+   - Ordne jeder Sprecher-ID genau einen Namen zu oder null, wenn kein Name genannt oder abgeleitet werden kann.
+   - Vergib eine hohe Confidence (0.85 - 1.0) bei klarer Anrede oder Bestätigung.
 
 Transkript:
 ${formattedTranscript}
@@ -136,7 +195,7 @@ Antworte ausschließlich im JSON-Format mit dieser Struktur:
   "speakers": [
     {
       "speakerId": "speaker_1",
-      "name": "Name der Person oder null wenn unbekannt",
+      "name": "Echter Name der Person oder null wenn unbekannt",
       "confidence": 0.95,
       "evidence": "Kurze Begründung mit Zitat"
     }
