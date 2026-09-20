@@ -175,7 +175,6 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               {meeting.speakers.map((spk) => {
                 const segCount = meeting.segments.filter((s) => s.speakerId === spk.id).length;
-                const isIdentified = Boolean(spk.assignedName && spk.confidence >= 0.8);
                 const isPlaying = playingSpeakerId === spk.id;
                 const isEditing = editingSpeakerId === spk.id;
 
@@ -244,12 +243,8 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                               <Edit2 className="w-2.5 h-2.5" />
                             </button>
                           </div>
-                          <div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
+                          <div className="text-[10px] text-[var(--text-muted)]">
                             <span>{segCount} {segCount === 1 ? 'Abschnitt' : 'Abschnitte'}</span>
-                            <span>•</span>
-                            <span className={isIdentified ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400'}>
-                              {isIdentified ? 'Erkannt' : 'Unklar'}
-                            </span>
                           </div>
                         </div>
                       )}
@@ -335,7 +330,6 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
           const speaker = speakerMap.get(seg.speakerId);
           const isPlaying = playingSegmentId === seg.id;
           const speakerName = speaker?.assignedName || speaker?.label || seg.speakerLabel;
-          const isHighConfidence = speaker && speaker.confidence >= 0.8;
 
           return (
             <div
@@ -365,13 +359,6 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                     <span>{speakerName}</span>
                     <Edit2 className="w-2.5 h-2.5 opacity-60" />
                   </button>
-
-                  {/* Recognition Source / Confidence */}
-                  {speaker?.assignedName && (
-                    <span className={isHighConfidence ? 'badge-on-track text-[10px]' : 'badge-neutral text-[10px]'}>
-                      {isHighConfidence ? '✓ Erkannt' : 'Zugeordnet'}
-                    </span>
-                  )}
 
                   {/* Addressed To Note */}
                   {seg.addressedTo && (
