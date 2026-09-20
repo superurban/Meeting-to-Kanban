@@ -338,7 +338,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
               className="btn-primary text-xs shrink-0 flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>{isExtractingTasks ? 'Analysiere Next Steps...' : 'Tasks erstellen'}</span>
+              <span>{isExtractingTasks ? 'Analysiere' : 'Tasks erstellen'}</span>
             </button>
           </div>
         </div>
