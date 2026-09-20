@@ -30,6 +30,10 @@ export class TranscriptionService {
       onProgressLog?: (log: string) => void;
       onReasoningChunk?: (chunk: string) => void;
       onContentChunk?: (chunk: string) => void;
+    },
+    context?: {
+      existingSpeakers?: Array<{ id: string; label: string; assignedName: string | null }>;
+      isAppendMode?: boolean;
     }
   ): Promise<TranscriptSegment[]> {
     // 1. Convert any audio (WebM, OGG, MP4) to 16kHz mono WAV for 100% reliable API acceptance
@@ -47,12 +51,18 @@ export class TranscriptionService {
 
     const base64Audio = await this.blobToBase64(processedBlob);
 
+    const knownSpeakersText = context?.existingSpeakers && context.existingSpeakers.length > 0
+      ? `\nBEREITS BEKANNTE TEILNEHMER AUS DIESEM MEETING:\n${context.existingSpeakers
+          .map((s) => `- ${s.assignedName || s.label} (${s.id})`)
+          .join('\n')}\nWenn du eine dieser Stimmen oder Namen wiedererkennst, kannst du die entsprechende speakerId bzw. den Namen verwenden.\n`
+      : '';
+
     const prompt = `Transkribiere diese Audioaufnahme eines Meetings mit präziser Sprecher-Diarisierung.
 Aufgaben:
 1. Erkenne unterschiedliche Sprecher und weise ihnen fortlaufende Kennungen zu (z.B. speaker_1, speaker_2, speaker_3).
 2. Erfasse präzise Zeitstempel für Start- und Endzeit jedes Sprechbeitrags in Sekunden.
 3. Transkribiere den tatsächlich gesprochenen Text im genauen Originalwortlaut (KEINE erfundenen Dialoge!).
-
+${knownSpeakersText}
 KRITISCHE REGEL ZUR SPRECHER-KONSISTENZ (STIMMEN-CLUSTER):
 - Dieselbe Person / Stimme MUSS über das gesamte Audio hinweg ausnahmslos dieselbe speakerId behalten!
 - Teile dieselbe Person auf KEINEN Fall in unterschiedliche Sprecher auf, auch wenn Pausen, Unterbrechungen oder Themenwechsel vorliegen.

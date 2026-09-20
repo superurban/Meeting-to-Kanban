@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users, GitMerge, Clock, MessageSquare, RefreshCw, Check } from 'lucide-react';
+import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users, GitMerge, Clock, MessageSquare, RefreshCw, Check, Mic, Plus } from 'lucide-react';
 import { Meeting, TranscriptSegment, Speaker } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
 import { formatTimestamp, formatDuration } from '../../utils/dateUtils';
 import { AppTab } from '../layout/Navigation';
+import { AppendRecordingModal } from '../recorder/AppendRecordingModal';
 
 interface TranscriptViewerProps {
   meeting: Meeting;
@@ -13,6 +14,10 @@ interface TranscriptViewerProps {
   isExtractingTasks: boolean;
   onRetranscribe?: () => void;
   isRetranscribing?: boolean;
+  onAppendRecording?: (audioBlob: Blob, mimeType: string, durationSeconds: number) => Promise<void>;
+  isAppending?: boolean;
+  hasApiKey?: boolean;
+  onOpenSettings?: () => void;
   onNavigateTab?: (tab: AppTab) => void;
   onMergeSpeakers?: (sourceSpeakerId: string, targetSpeakerId: string) => void;
   onUpdateMeetingTitle?: (meetingId: string, newTitle: string) => void;
@@ -26,6 +31,10 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   isExtractingTasks,
   onRetranscribe,
   isRetranscribing,
+  onAppendRecording,
+  isAppending,
+  hasApiKey = false,
+  onOpenSettings,
   onNavigateTab,
   onMergeSpeakers,
   onUpdateMeetingTitle
@@ -34,6 +43,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   const [playingSpeakerId, setPlayingSpeakerId] = useState<string | null>(null);
   const [editingSpeakerId, setEditingSpeakerId] = useState<string | null>(null);
   const [editNameVal, setEditNameVal] = useState('');
+  const [isAppendModalOpen, setIsAppendModalOpen] = useState(false);
 
   // Meeting Title Editing State
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -294,13 +304,26 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
             </div>
           </div>
 
-          {/* Action buttons: AI Retranscription & Task Extraction */}
+          {/* Action buttons: Append Recording, AI Retranscription & Task Extraction */}
           <div className="flex items-center gap-2 flex-wrap">
+            {onAppendRecording && (
+              <button
+                type="button"
+                onClick={() => setIsAppendModalOpen(true)}
+                disabled={isAppending || isExtractingTasks || isRetranscribing}
+                className="btn-secondary text-xs shrink-0 flex items-center gap-1.5 hover:border-blue-500/50 cursor-pointer"
+                title="Weiteren Audioabschnitt aufnehmen oder hochladen und an dieses Meeting anhängen"
+              >
+                <Mic className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>{isAppending ? 'Wird angehängt...' : 'Aufnahme hinzufügen'}</span>
+              </button>
+            )}
+
             {onRetranscribe && (
               <button
                 type="button"
                 onClick={onRetranscribe}
-                disabled={isRetranscribing || !meeting.audioBlob}
+                disabled={isRetranscribing || isAppending || !meeting.audioBlob}
                 className="btn-secondary text-xs shrink-0 flex items-center gap-1.5"
                 title="Das Meeting noch einmal mit dem KI-Sprachmodell analysieren"
               >
@@ -311,7 +334,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
 
             <button
               onClick={onExtractTasks}
-              disabled={isExtractingTasks || meeting.segments.length === 0}
+              disabled={isExtractingTasks || isAppending || meeting.segments.length === 0}
               className="btn-primary text-xs shrink-0 flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -770,8 +793,40 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
               </div>
             );
           })}
+
+          {/* Footer prompt to append further recording */}
+          {onAppendRecording && (
+            <div className="pt-3 mt-3 border-t border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-muted)]">
+              <span>Weiterer Gesprächsabschnitt besprochen?</span>
+              <button
+                type="button"
+                onClick={() => setIsAppendModalOpen(true)}
+                disabled={isAppending}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Weitere Aufnahme anhängen</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Modal to record or upload additional audio */}
+      {isAppendModalOpen && onAppendRecording && (
+        <AppendRecordingModal
+          isOpen={isAppendModalOpen}
+          meeting={meeting}
+          onClose={() => setIsAppendModalOpen(false)}
+          onAppendRecording={async (blob, mime, dur) => {
+            await onAppendRecording(blob, mime, dur);
+            setIsAppendModalOpen(false);
+          }}
+          isProcessing={Boolean(isAppending)}
+          hasApiKey={Boolean(hasApiKey)}
+          onOpenSettings={onOpenSettings || (() => {})}
+        />
+      )}
     </div>
   );
 };

@@ -15,7 +15,7 @@ export async function convertBlobToWav(blob: Blob, targetSampleRate = 16000): Pr
     tempCtx.close();
   }
 
-  // Resample to targetSampleRate (e.g. 16kHz) mono using OfflineAudioContext
+// Resample to targetSampleRate (e.g. 16kHz) mono using OfflineAudioContext
   const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetSampleRate), targetSampleRate);
   const source = offlineCtx.createBufferSource();
   source.buffer = audioBuffer;
@@ -28,6 +28,64 @@ export async function convertBlobToWav(blob: Blob, targetSampleRate = 16000): Pr
   // Encode Float32Array to 16-bit PCM WAV
   const wavBytes = encodeWav(channelData, targetSampleRate);
   return new Blob([wavBytes], { type: 'audio/wav' });
+}
+
+/**
+ * Concatenates two audio Blobs sequentially into a single standard PCM 16-bit WAV (mono, 16kHz).
+ * Returns the merged blob, individual durations, and the new total duration.
+ */
+export async function concatAudioBlobs(
+  blob1: Blob | undefined | null,
+  blob2: Blob,
+  targetSampleRate = 16000
+): Promise<{ mergedBlob: Blob; duration1: number; duration2: number; totalDuration: number }> {
+  const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  const tempCtx = new AudioCtx();
+
+  let buffer1: AudioBuffer | null = null;
+  let buffer2: AudioBuffer;
+
+  try {
+    if (blob1 && blob1.size > 0) {
+      try {
+        const ab1 = await blob1.arrayBuffer();
+        buffer1 = await tempCtx.decodeAudioData(ab1.slice(0));
+      } catch (err) {
+        console.warn('Could not decode existing audio blob1 for concatenation:', err);
+      }
+    }
+
+    const ab2 = await blob2.arrayBuffer();
+    buffer2 = await tempCtx.decodeAudioData(ab2.slice(0));
+  } finally {
+    tempCtx.close();
+  }
+
+  const duration1 = buffer1 ? buffer1.duration : 0;
+  const duration2 = buffer2.duration;
+  const totalDuration = duration1 + duration2;
+
+  const totalSamples = Math.ceil(totalDuration * targetSampleRate);
+  const offlineCtx = new OfflineAudioContext(1, Math.max(1, totalSamples), targetSampleRate);
+
+  if (buffer1 && duration1 > 0) {
+    const source1 = offlineCtx.createBufferSource();
+    source1.buffer = buffer1;
+    source1.connect(offlineCtx.destination);
+    source1.start(0);
+  }
+
+  const source2 = offlineCtx.createBufferSource();
+  source2.buffer = buffer2;
+  source2.connect(offlineCtx.destination);
+  source2.start(duration1);
+
+  const renderedBuffer = await offlineCtx.startRendering();
+  const channelData = renderedBuffer.getChannelData(0);
+  const wavBytes = encodeWav(channelData, targetSampleRate);
+  const mergedBlob = new Blob([wavBytes], { type: 'audio/wav' });
+
+  return { mergedBlob, duration1, duration2, totalDuration };
 }
 
 function encodeWav(samples: Float32Array, sampleRate: number): ArrayBuffer {

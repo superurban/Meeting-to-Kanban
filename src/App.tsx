@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Meeting, SpeakerClarificationRequest, OpenRouterConfig, Task, Speaker } from './types';
+import { Meeting, SpeakerClarificationRequest, OpenRouterConfig, Task, Speaker, TranscriptSegment } from './types';
 import { AudioStorage } from './services/audio/AudioStorage';
 import { OpenRouterClient } from './services/ai/openrouter';
 import { TranscriptionService } from './services/ai/transcription';
@@ -47,6 +47,7 @@ export const App: React.FC = () => {
   const [liveReasoningText, setLiveReasoningText] = useState<string>('');
   const [isExtractingTasks, setIsExtractingTasks] = useState(false);
   const [isRetranscribing, setIsRetranscribing] = useState(false);
+  const [isAppendingRecording, setIsAppendingRecording] = useState(false);
   const [taskAlertMessage, setTaskAlertMessage] = useState<string | null>(null);
   const [clarificationRequest, setClarificationRequest] = useState<SpeakerClarificationRequest | null>(null);
   const [clarificationQueue, setClarificationQueue] = useState<SpeakerClarificationRequest[]>([]);
@@ -623,6 +624,197 @@ export const App: React.FC = () => {
   };
 
   /**
+   * Appends an additional recording to the current meeting:
+   * 1. Concat audio blobs into standard 16kHz WAV
+   * 2. Transcribe only the new audio part with AI speaker diarization
+   * 3. Offset timestamps by existing audio duration and append new segments
+   * 4. Remap/merge speakers
+   * 5. Extract additional tasks from the new segment
+   * 6. Save updated meeting and merged audio blob to IndexedDB
+   */
+  const handleAppendRecordingToMeeting = async (
+    newAudioBlob: Blob,
+    newMimeType: string,
+    newDurationSeconds: number
+  ) => {
+    if (!currentMeeting) return;
+
+    const client = new OpenRouterClient(config);
+    if (!client.hasApiKey()) {
+      alert('Bitte trage deinen OpenRouter API-Key in den Einstellungen ein, um die neue Aufnahme zu transkribieren.');
+      setIsSettingsOpen(true);
+      return;
+    }
+
+    setIsAppendingRecording(true);
+    setTaskAlertMessage('Neuer Gesprächsabschnitt wird verarbeitet...');
+    setLiveReasoningText('');
+    setReasoningLogs([
+      `[append.start] Hänge ${newDurationSeconds.toFixed(1)}s Aufnahme an "${currentMeeting.title}" an...`
+    ]);
+
+    try {
+      // 1. Concatenate audio with Web Audio API
+      setReasoningLogs((prev) => [...prev, `[audio.concat] Führe bisherige und neue Tonspur zusammen...`]);
+      const { concatAudioBlobs } = await import('./services/audio/wavConverter');
+      
+      const { mergedBlob, duration1, totalDuration } = await concatAudioBlobs(
+        currentMeeting.audioBlob,
+        newAudioBlob
+      );
+
+      const timeOffset = duration1 > 0 ? duration1 : (currentMeeting.durationSeconds || 0);
+
+      setReasoningLogs((prev) => [
+        ...prev,
+        `[audio.merged] Gesamttonspur: ${totalDuration.toFixed(1)}s (Offset für neuen Teil: ${timeOffset.toFixed(1)}s).`
+      ]);
+
+      // 2. Transcribe ONLY the newly appended portion (fast & cost-efficient)
+      setReasoningLogs((prev) => [
+        ...prev,
+        `[transcribe.new] Starte KI-Diarisierung des neuen Abschnitts...`
+      ]);
+
+      const newRawSegments = await TranscriptionService.transcribeAudio(
+        newAudioBlob,
+        newMimeType,
+        client,
+        {
+          onProgressLog: (log) => setReasoningLogs((prev) => [...prev, log]),
+          onReasoningChunk: (chunk) => setLiveReasoningText((prev) => prev + chunk),
+          onContentChunk: (chunk) => setLiveReasoningText((prev) => prev + chunk)
+        },
+        {
+          existingSpeakers: currentMeeting.speakers,
+          isAppendMode: true
+        }
+      );
+
+      // 3. Offset timestamps of new segments so they continue seamlessly
+      const nowTimestamp = Date.now();
+      const adjustedNewSegments: TranscriptSegment[] = newRawSegments.map((seg, idx) => ({
+        ...seg,
+        id: `seg_appended_${nowTimestamp}_${idx}`,
+        startTime: Number((timeOffset + seg.startTime).toFixed(2)),
+        endTime: Number((timeOffset + seg.endTime).toFixed(2))
+      }));
+
+      setReasoningLogs((prev) => [
+        ...prev,
+        `[segments.adjusted] ${adjustedNewSegments.length} neue Abschnitte mit Zeitversatz integriert.`
+      ]);
+
+      // 4. Resolve and merge speakers
+      const { speakers: deducedNewSpeakers } = await SpeakerDeductionService.resolveSpeakers(
+        adjustedNewSegments,
+        client.hasApiKey() ? client : undefined
+      );
+
+      const updatedSpeakers = [...currentMeeting.speakers];
+      const speakerIdRemap = new Map<string, string>();
+
+      deducedNewSpeakers.forEach((newSpk) => {
+        // Check if an existing speaker has the exact same name (case-insensitive)
+        const matchExisting = newSpk.assignedName
+          ? updatedSpeakers.find(
+              (s) => s.assignedName?.toLowerCase().trim() === newSpk.assignedName?.toLowerCase().trim()
+            )
+          : null;
+
+        if (matchExisting) {
+          speakerIdRemap.set(newSpk.id, matchExisting.id);
+        } else {
+          let finalId = newSpk.id;
+          if (updatedSpeakers.some((s) => s.id === finalId)) {
+            finalId = `spk_appended_${nowTimestamp}_${newSpk.id}`;
+            speakerIdRemap.set(newSpk.id, finalId);
+          }
+          updatedSpeakers.push({
+            ...newSpk,
+            id: finalId,
+            label: newSpk.assignedName || `Sprecher ${updatedSpeakers.length + 1}`
+          });
+        }
+      });
+
+      // Apply remapped speaker IDs to adjusted segments
+      const finalizedNewSegments = adjustedNewSegments.map((seg) => {
+        const remappedId = speakerIdRemap.get(seg.speakerId);
+        if (remappedId) {
+          const spk = updatedSpeakers.find((s) => s.id === remappedId);
+          return {
+            ...seg,
+            speakerId: remappedId,
+            speakerLabel: spk?.assignedName || spk?.label || seg.speakerLabel
+          };
+        }
+        return seg;
+      });
+
+      const combinedSegments = [...currentMeeting.segments, ...finalizedNewSegments];
+
+      // 5. Extract additional tasks from the newly appended segments
+      setReasoningLogs((prev) => [
+        ...prev,
+        `[kanban.extract] Prüfe neuen Gesprächsabschnitt auf neue Aufgaben...`
+      ]);
+
+      let additionalTasks: Task[] = [];
+      try {
+        additionalTasks = await TaskExtractorService.extractTasks(
+          currentMeeting.id,
+          currentMeeting.date,
+          finalizedNewSegments,
+          updatedSpeakers,
+          client.hasApiKey() ? client : undefined,
+          {
+            onProgressLog: (log) => setReasoningLogs((prev) => [...prev, log]),
+            onReasoningChunk: (chunk) => setLiveReasoningText((prev) => prev + chunk)
+          }
+        );
+      } catch (err) {
+        console.warn('Task extraction for appended segment failed or returned none:', err);
+      }
+
+      const combinedTasks = [...currentMeeting.tasks, ...additionalTasks];
+
+      // 6. Assemble updated meeting
+      const updatedMeeting: Meeting = {
+        ...currentMeeting,
+        durationSeconds: Math.round(totalDuration),
+        audioBlob: mergedBlob,
+        audioUrl: URL.createObjectURL(mergedBlob),
+        audioMimeType: 'audio/wav',
+        speakers: updatedSpeakers,
+        segments: combinedSegments,
+        tasks: combinedTasks,
+        status: 'ready'
+      };
+
+      // 7. Persist to IndexedDB
+      await AudioStorage.saveAudioBlob(currentMeeting.id, mergedBlob);
+      await AudioStorage.saveMeeting(updatedMeeting);
+
+      // 8. Update React state
+      setMeetings((prev) => prev.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m)));
+      setActiveTab('transcript');
+
+      setTaskAlertMessage(
+        `Aufnahme erfolgreich angehängt: +${finalizedNewSegments.length} Abschnitte${
+          additionalTasks.length > 0 ? `, +${additionalTasks.length} neue Aufgaben` : ''
+        }.`
+      );
+      setTimeout(() => setTaskAlertMessage(null), 5000);
+    } catch (err) {
+      console.error('Fehler beim Anhängen der Aufnahme:', err);
+      alert('Fehler beim Anhängen der Aufnahme: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsAppendingRecording(false);
+    }
+  };
+
+  /**
    * Update tasks from Kanban Board (status change, edits, drag & drop)
    */
   const handleUpdateTasks = async (newTasks: Task[]) => {
@@ -736,6 +928,10 @@ export const App: React.FC = () => {
             isExtractingTasks={isExtractingTasks}
             onRetranscribe={handleRetranscribeMeeting}
             isRetranscribing={isRetranscribing}
+            onAppendRecording={handleAppendRecordingToMeeting}
+            isAppending={isAppendingRecording}
+            hasApiKey={Boolean(config.apiKey && config.apiKey.trim().length > 0)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
             onNavigateTab={setActiveTab}
             onUpdateMeetingTitle={handleUpdateMeetingTitle}
           />

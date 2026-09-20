@@ -210,4 +210,76 @@ describe('Speaker Deduction & Date Utils', () => {
     expect(mergedSegments.every(seg => seg.speakerLabel === 'Thorben')).toBe(true);
     expect(mergedTasks.every(t => t.assignee === 'Thorben')).toBe(true);
   });
+
+  it('Appending recording correctly offsets timestamps and merges segments', () => {
+    const existingSegments = [
+      { id: 'seg_1', speakerId: 'spk_1', speakerLabel: 'Florian', startTime: 0, endTime: 15, text: 'Erster Teil des Meetings.' },
+      { id: 'seg_2', speakerId: 'spk_2', speakerLabel: 'Sarah', startTime: 16, endTime: 30, text: 'Zweiter Teil des Meetings.' }
+    ];
+
+    const timeOffset = 30.0;
+    const newRawSegments = [
+      { id: 'new_1', speakerId: 'speaker_1', speakerLabel: 'Sprecher 1', startTime: 0.5, endTime: 6.2, text: 'Noch ein Nachtrag.' },
+      { id: 'new_2', speakerId: 'speaker_2', speakerLabel: 'Sprecher 2', startTime: 7.0, endTime: 12.5, text: 'Alles klar, danke.' }
+    ];
+
+    const adjustedNewSegments = newRawSegments.map((seg, idx) => ({
+      ...seg,
+      id: `seg_appended_${idx}`,
+      startTime: Number((timeOffset + seg.startTime).toFixed(2)),
+      endTime: Number((timeOffset + seg.endTime).toFixed(2))
+    }));
+
+    const combinedSegments = [...existingSegments, ...adjustedNewSegments];
+
+    expect(combinedSegments.length).toBe(4);
+    expect(combinedSegments[2].startTime).toBe(30.5);
+    expect(combinedSegments[2].endTime).toBe(36.2);
+    expect(combinedSegments[3].startTime).toBe(37.0);
+    expect(combinedSegments[3].endTime).toBe(42.5);
+    // Ensure all timestamps are strictly in chronological order
+    for (let i = 1; i < combinedSegments.length; i++) {
+      expect(combinedSegments[i].startTime).toBeGreaterThanOrEqual(combinedSegments[i - 1].startTime);
+    }
+  });
+
+  it('Appending recording links speakers by name or adds distinct new speakers', () => {
+    const existingSpeakers = [
+      { id: 'spk_1', label: 'Sprecher 1', assignedName: 'Florian', confidence: 1.0, color: '#3b82f6' },
+      { id: 'spk_2', label: 'Sprecher 2', assignedName: 'Sarah', confidence: 0.9, color: '#10b981' }
+    ];
+
+    const newDeducedSpeakers = [
+      { id: 'new_spk_a', label: 'Sprecher 1', assignedName: 'Florian', confidence: 0.95, color: '#3b82f6' }, // existing
+      { id: 'new_spk_b', label: 'Sprecher 2', assignedName: 'Thomas', confidence: 0.9, color: '#f59e0b' }   // new
+    ];
+
+    const updatedSpeakers = [...existingSpeakers];
+    const speakerIdRemap = new Map<string, string>();
+
+    newDeducedSpeakers.forEach((newSpk) => {
+      const matchExisting = newSpk.assignedName
+        ? updatedSpeakers.find(
+            (s) => s.assignedName?.toLowerCase().trim() === newSpk.assignedName?.toLowerCase().trim()
+          )
+        : null;
+
+      if (matchExisting) {
+        speakerIdRemap.set(newSpk.id, matchExisting.id);
+      } else {
+        const finalId = `spk_new_${newSpk.id}`;
+        speakerIdRemap.set(newSpk.id, finalId);
+        updatedSpeakers.push({
+          ...newSpk,
+          id: finalId,
+          label: newSpk.assignedName || `Sprecher ${updatedSpeakers.length + 1}`
+        });
+      }
+    });
+
+    expect(speakerIdRemap.get('new_spk_a')).toBe('spk_1');
+    expect(speakerIdRemap.get('new_spk_b')).toBe('spk_new_new_spk_b');
+    expect(updatedSpeakers.length).toBe(3);
+    expect(updatedSpeakers.find(s => s.assignedName === 'Thomas')).toBeDefined();
+  });
 });
