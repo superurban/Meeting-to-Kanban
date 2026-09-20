@@ -59,9 +59,6 @@ export const Header: React.FC<HeaderProps> = ({
                 VoiceToKanban
               </h1>
             </div>
-            <p className="text-[11px] text-[var(--text-muted)] hidden sm:block leading-tight mt-0.5">
-              Executive Meeting Protocol & Task Extraction
-            </p>
           </div>
         </div>
 
