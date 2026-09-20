@@ -283,7 +283,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
             <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
               <span>{meeting.segments.length} Abschnitte</span>
               <span>•</span>
-              <span>{meeting.speakers.length} erkannte Sprecher</span>
+              <span>{meeting.speakers.length} Sprecher</span>
               <span>•</span>
               <span>{new Date(meeting.date).toLocaleDateString('de-DE')}</span>
             </div>
@@ -324,7 +324,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <span>Erkannte Sprecher ({meeting.speakers.length})</span>
+                <span>Sprecher</span>
               </span>
             </div>
 
