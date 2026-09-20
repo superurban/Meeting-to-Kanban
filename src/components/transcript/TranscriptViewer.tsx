@@ -655,11 +655,6 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                 <p className="text-[11px] text-[var(--text-secondary)] italic line-clamp-3 leading-relaxed">
                   "{hoveredSegment.text}"
                 </p>
-
-                {/* Tooltip Hint */}
-                <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1 pt-1.5 border-t border-[var(--border-color)]">
-                  <span>Klicken zum Anspringen im Chat</span>
-                </div>
               </div>
 
               {/* Little downward indicator arrow */}
