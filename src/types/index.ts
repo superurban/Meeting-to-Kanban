@@ -38,6 +38,7 @@ export interface TranscriptSegment {
 export interface Meeting {
   id: string;
   title: string;
+  isTitleManuallySet?: boolean;
   date: string; // ISO date string
   durationSeconds: number;
   audioBlob?: Blob;

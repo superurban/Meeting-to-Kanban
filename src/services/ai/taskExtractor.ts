@@ -126,9 +126,10 @@ Antworte ausschließlich im JSON-Format mit dieser Struktur:
           ? parsed
           : parsed.tasks || [];
 
-        const suggestedTitle = (parsed.meetingTitle && typeof parsed.meetingTitle === 'string' && parsed.meetingTitle.trim())
+        const rawTitle = (parsed.meetingTitle && typeof parsed.meetingTitle === 'string' && parsed.meetingTitle.trim())
           ? parsed.meetingTitle.trim()
           : (taskItems.length > 0 && taskItems[0].title ? String(taskItems[0].title) : defaultTitle);
+        const suggestedTitle = rawTitle.replace(/^["'„“«»`]+|["'„“«»`]+$/g, '').trim() || defaultTitle;
 
         const tasks: Task[] = taskItems.map((item, index) => {
           // Robust deterministic date validation:

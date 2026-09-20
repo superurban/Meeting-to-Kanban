@@ -16,7 +16,6 @@ import { KanbanBoard } from './components/kanban/KanbanBoard';
 import { MeetingsManagerView } from './components/meetings/MeetingsManagerView';
 import { DeleteConfirmModal } from './components/meetings/DeleteConfirmModal';
 import { SettingsModal } from './components/settings/SettingsModal';
-import { MeetingTitleSuggestModal } from './components/meetings/MeetingTitleSuggestModal';
 
 export const App: React.FC = () => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -55,9 +54,6 @@ export const App: React.FC = () => {
 
   // Deletion Confirmation State
   const [deleteTargetMeeting, setDeleteTargetMeeting] = useState<Meeting | null>(null);
-
-  // Suggested Meeting Title Modal State
-  const [suggestedTitleModalMeeting, setSuggestedTitleModalMeeting] = useState<{ id: string; suggestedTitle: string } | null>(null);
 
   // Background Meeting Jobs State (Job-Liste)
   const [meetingJobs, setMeetingJobs] = useState<MeetingJob[]>([]);
@@ -246,6 +242,7 @@ export const App: React.FC = () => {
       const newMeeting: Meeting = {
         id: meetingId,
         title: finalMeetingTitle,
+        isTitleManuallySet: Boolean(title?.trim()),
         date: meetingDate,
         durationSeconds,
         audioBlob,
@@ -267,12 +264,6 @@ export const App: React.FC = () => {
 
       // Automatically switch to Kanban board as requested
       setActiveTab('kanban');
-
-      // Prompt user with suggested title that can be easily overwritten or accepted
-      setSuggestedTitleModalMeeting({
-        id: meetingId,
-        suggestedTitle: finalMeetingTitle
-      });
     } catch (err) {
       console.error('Fehler in der Meeting-Verarbeitung:', err);
       alert('Ein Fehler ist bei der Verarbeitung aufgetreten: ' + (err instanceof Error ? err.message : String(err)));
@@ -619,10 +610,44 @@ export const App: React.FC = () => {
         client.hasApiKey() ? client : undefined
       );
 
+      // Check if user manually set the title (or if it was explicitly marked as manual)
+      const isManualTitle = currentMeeting.isTitleManuallySet === true;
+      let finalTitle = currentMeeting.title;
+      let finalTasks = currentMeeting.tasks;
+
+      try {
+        const { tasks: reExtractedTasks, meetingTitle: newlySuggestedTitle } =
+          await TaskExtractorService.extractTasksAndTitle(
+            currentMeeting.id,
+            currentMeeting.date,
+            segments,
+            speakers,
+            client.hasApiKey() ? client : undefined,
+            {
+              onProgressLog: (log) => setReasoningLogs((prev) => [...prev, log]),
+              onReasoningChunk: (chunk) => setLiveReasoningText((prev) => prev + chunk)
+            }
+          );
+
+        if (reExtractedTasks && reExtractedTasks.length > 0) {
+          finalTasks = reExtractedTasks;
+        }
+
+        // Only overwrite meeting name if NOT manually set by the user!
+        if (!isManualTitle && newlySuggestedTitle && !newlySuggestedTitle.startsWith('Meeting vom ')) {
+          finalTitle = newlySuggestedTitle;
+        }
+      } catch (err) {
+        console.warn('Aufgaben- und Titel-Aktualisierung bei erneuter Transkription übersprungen:', err);
+      }
+
       const updatedMeeting: Meeting = {
         ...currentMeeting,
+        title: finalTitle,
+        isTitleManuallySet: isManualTitle,
         speakers,
         segments,
+        tasks: finalTasks,
         status: clarificationNeeded.length > 0 ? 'clarification_needed' : 'ready'
       };
 
@@ -896,7 +921,7 @@ export const App: React.FC = () => {
     setMeetings((prev) =>
       prev.map((m) => {
         if (m.id === meetingId) {
-          const updated = { ...m, title: trimmed };
+          const updated: Meeting = { ...m, title: trimmed, isTitleManuallySet: true };
           AudioStorage.saveMeeting(updated).catch(console.error);
           return updated;
         }
@@ -1093,17 +1118,6 @@ export const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         onResetData={handleResetData}
       />
-
-      {/* Suggested Meeting Title Modal (allows overwriting or accepting with Enter) */}
-      {suggestedTitleModalMeeting && (
-        <MeetingTitleSuggestModal
-          isOpen={Boolean(suggestedTitleModalMeeting)}
-          meetingId={suggestedTitleModalMeeting.id}
-          initialTitle={suggestedTitleModalMeeting.suggestedTitle}
-          onSaveTitle={handleUpdateMeetingTitle}
-          onClose={() => setSuggestedTitleModalMeeting(null)}
-        />
-      )}
     </div>
   );
 };

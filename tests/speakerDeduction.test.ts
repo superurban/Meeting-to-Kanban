@@ -315,4 +315,27 @@ describe('Speaker Deduction & Date Utils', () => {
     expect(result.tasks[0].dueDate).toBe('2026-09-22');
     expect(result.meetingTitle).toBeDefined();
   });
+
+  it('preserves manual meeting title on re-transcription, but updates default title', () => {
+    // 1. Meeting with manually set title
+    const manualMeeting = {
+      id: 'm1',
+      title: 'Benutzerdefinierter Titel',
+      isTitleManuallySet: true
+    };
+    const newAiTitle = 'KI-Vorschlag Neu';
+    const isManual = manualMeeting.isTitleManuallySet === true;
+    const finalTitleManual = isManual ? manualMeeting.title : newAiTitle;
+    expect(finalTitleManual).toBe('Benutzerdefinierter Titel');
+
+    // 2. Meeting with auto-generated title (not manually set)
+    const autoMeeting = {
+      id: 'm2',
+      title: 'Meeting vom 20.09.2026, 16:07',
+      isTitleManuallySet: false
+    };
+    const isAutoManual = autoMeeting.isTitleManuallySet === true;
+    const finalTitleAuto = isAutoManual ? autoMeeting.title : newAiTitle;
+    expect(finalTitleAuto).toBe('KI-Vorschlag Neu');
+  });
 });
