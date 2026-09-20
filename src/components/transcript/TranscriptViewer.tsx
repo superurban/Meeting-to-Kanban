@@ -54,7 +54,8 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
 
   // Interactive Timeline Scrubber & Sync State
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
-  const [hoveredSegment, setHoveredSegment] = useState<TranscriptSegment | null>(null);
+  const [hoveredSegmentId, setHoveredSegmentId] = useState<string | null>(null);
+  const [timelineHoveredSegment, setTimelineHoveredSegment] = useState<TranscriptSegment | null>(null);
   const [tooltipX, setTooltipX] = useState<number>(50);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,23 +134,27 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
     );
 
     if (matchingSeg) {
-      setHoveredSegment(matchingSeg);
+      setTimelineHoveredSegment(matchingSeg);
+      setHoveredSegmentId(matchingSeg.id);
       setTooltipX(pct * 100);
     } else {
       const closeSeg = meeting.segments.find(
         (s) => Math.abs(s.startTime - timeAtCursor) < 2 || Math.abs(s.endTime - timeAtCursor) < 2
       );
       if (closeSeg) {
-        setHoveredSegment(closeSeg);
+        setTimelineHoveredSegment(closeSeg);
+        setHoveredSegmentId(closeSeg.id);
         setTooltipX(((closeSeg.startTime + closeSeg.endTime) / 2 / totalDuration) * 100);
       } else {
-        setHoveredSegment(null);
+        setTimelineHoveredSegment(null);
+        setHoveredSegmentId(null);
       }
     }
   };
 
   const handleTimelineMouseLeave = () => {
-    setHoveredSegment(null);
+    setTimelineHoveredSegment(null);
+    setHoveredSegmentId(null);
   };
 
   // Find unassigned speakers
@@ -589,7 +594,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
               const widthPct = Math.max(0.7, ((seg.endTime - seg.startTime) / totalDuration) * 100);
               const isSegActive = activeSegmentId === seg.id;
               const isSegPlaying = playingSegmentId === seg.id;
-              const isSegHovered = hoveredSegment?.id === seg.id;
+              const isSegHovered = hoveredSegmentId === seg.id;
 
               return (
                 <div
@@ -609,7 +614,8 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                     handleJumpToSegment(seg.id);
                   }}
                   onMouseEnter={() => {
-                    setHoveredSegment(seg);
+                    setTimelineHoveredSegment(seg);
+                    setHoveredSegmentId(seg.id);
                     setTooltipX(leftPct + widthPct / 2);
                   }}
                 />
@@ -617,8 +623,8 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
             })}
           </div>
 
-          {/* Hover Tooltip showing speaker, time & spoken text */}
-          {hoveredSegment && (
+          {/* Hover Tooltip showing speaker, time & spoken text - ONLY when hovering directly on timeline */}
+          {timelineHoveredSegment && (
             <div 
               className="absolute z-30 pointer-events-none transition-all duration-75"
               style={{
@@ -640,20 +646,20 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span 
                       className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: speakerMap.get(hoveredSegment.speakerId)?.color || '#3b82f6' }}
+                      style={{ backgroundColor: speakerMap.get(timelineHoveredSegment.speakerId)?.color || '#3b82f6' }}
                     />
                     <span className="font-semibold text-[var(--text-primary)] truncate">
-                      {speakerMap.get(hoveredSegment.speakerId)?.assignedName || speakerMap.get(hoveredSegment.speakerId)?.label || hoveredSegment.speakerLabel}
+                      {speakerMap.get(timelineHoveredSegment.speakerId)?.assignedName || speakerMap.get(timelineHoveredSegment.speakerId)?.label || timelineHoveredSegment.speakerLabel}
                     </span>
                   </div>
                   <span className="font-mono text-[10px] text-[var(--text-muted)] shrink-0">
-                    {formatTimestamp(hoveredSegment.startTime)} – {formatTimestamp(hoveredSegment.endTime)}
+                    {formatTimestamp(timelineHoveredSegment.startTime)} – {formatTimestamp(timelineHoveredSegment.endTime)}
                   </span>
                 </div>
 
                 {/* Spoken Text Preview */}
                 <p className="text-[11px] text-[var(--text-secondary)] italic line-clamp-3 leading-relaxed">
-                  "{hoveredSegment.text}"
+                  "{timelineHoveredSegment.text}"
                 </p>
               </div>
 
@@ -702,7 +708,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
             const speaker = speakerMap.get(seg.speakerId);
             const isPlaying = playingSegmentId === seg.id;
             const isActive = activeSegmentId === seg.id;
-            const isHovered = hoveredSegment?.id === seg.id;
+            const isHovered = hoveredSegmentId === seg.id;
             const speakerName = speaker?.assignedName || speaker?.label || seg.speakerLabel;
 
             return (
@@ -719,13 +725,10 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                         : 'hover:bg-[var(--bg-subtle)]'
                 }`}
                 onMouseEnter={() => {
-                  setHoveredSegment(seg);
-                  const leftPct = (seg.startTime / totalDuration) * 100;
-                  const widthPct = Math.max(0.7, ((seg.endTime - seg.startTime) / totalDuration) * 100);
-                  setTooltipX(leftPct + widthPct / 2);
+                  setHoveredSegmentId(seg.id);
                 }}
                 onMouseLeave={() => {
-                  setHoveredSegment((prev) => (prev?.id === seg.id ? null : prev));
+                  setHoveredSegmentId((prev) => (prev === seg.id ? null : prev));
                 }}
               >
                 {/* Audio Snippet Playback Button (subtle, shows on hover or when playing) */}
