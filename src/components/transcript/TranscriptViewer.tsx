@@ -748,21 +748,6 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
             );
           })}
 
-          {/* Footer prompt to append further recording */}
-          {onAppendRecording && (
-            <div className="pt-3 mt-3 border-t border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-muted)]">
-              <span>Weiterer Gesprächsabschnitt besprochen?</span>
-              <button
-                type="button"
-                onClick={() => setIsAppendModalOpen(true)}
-                disabled={isAppending}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Weitere Aufnahme anhängen</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
