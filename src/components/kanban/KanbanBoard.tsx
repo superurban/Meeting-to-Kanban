@@ -303,73 +303,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       )}
 
-      {/* Zero Tasks Info Card */}
-      {tasks.length === 0 && (
-        <div 
-          className="p-8 text-center max-w-lg mx-auto my-6 rounded-lg border shadow-[var(--shadow-subtle)] animate-in fade-in"
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            borderColor: 'var(--border-color)'
-          }}
-        >
-          <div 
-            className="w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-3"
-            style={{
-              backgroundColor: 'var(--bg-subtle)',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-muted)'
-            }}
-          >
-            <AlertCircle className="w-5 h-5" />
-          </div>
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-            Keine Aufgaben im Meeting erkannt
-          </h3>
-          <p className="text-xs text-[var(--text-secondary)] mt-1.5 leading-relaxed max-w-sm mx-auto">
-            Im Transkript wurden keine konkreten Aufgaben oder Next Steps erwähnt. Du kannst Aufgaben manuell erstellen oder das Transkript prüfen.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2.5 mt-5">
-            <button
-              onClick={() => {
-                setSelectedTask({
-                  id: `task_${Date.now()}`,
-                  meetingId: meeting.id,
-                  title: '',
-                  assignee: speakers[0]?.assignedName || speakers[0]?.label || '',
-                  dueDate: null,
-                  description: '',
-                  status: 'todo',
-                  priority: 'medium',
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString()
-                });
-                setIsModalOpen(true);
-              }}
-              className="btn-primary text-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Aufgabe manuell anlegen</span>
-            </button>
-            <button
-              onClick={onExtractTasksAgain}
-              disabled={isExtracting}
-              className="btn-secondary text-xs"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>{isExtracting ? 'Analysiere...' : 'Erneut analysieren'}</span>
-            </button>
-            {onNavigateTab && (
-              <button
-                onClick={() => onNavigateTab('transcript')}
-                className="btn-secondary text-xs"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Transkript prüfen</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+
 
       {/* Mobile Column Tab Selector (< md breakpoint) */}
       <div 
