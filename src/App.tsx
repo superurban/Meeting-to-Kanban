@@ -48,6 +48,7 @@ export const App: React.FC = () => {
   const [isExtractingTasks, setIsExtractingTasks] = useState(false);
   const [isRetranscribing, setIsRetranscribing] = useState(false);
   const [isAppendingRecording, setIsAppendingRecording] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [taskAlertMessage, setTaskAlertMessage] = useState<string | null>(null);
   const [clarificationRequest, setClarificationRequest] = useState<SpeakerClarificationRequest | null>(null);
   const [clarificationQueue, setClarificationQueue] = useState<SpeakerClarificationRequest[]>([]);
@@ -207,8 +208,8 @@ export const App: React.FC = () => {
         `[speaker.resolve] ${speakers.length} Sprecher erfasst • ${clarificationNeeded.length} Sprecher ohne Namen.`
       ]);
 
-      setProcessingStep('Extrahiere Aufgaben & Meeting-Titel...');
-      const { tasks, meetingTitle: extractedTitle } = await TaskExtractorService.extractTasksAndTitle(
+      setProcessingStep('Extrahiere Aufgaben, Zusammenfassung & Meeting-Titel...');
+      const { tasks, meetingTitle: extractedTitle, summary: extractedSummary } = await TaskExtractorService.extractTasksAndTitle(
         meetingId,
         meetingDate,
         segments,
@@ -251,6 +252,7 @@ export const App: React.FC = () => {
         speakers,
         segments,
         tasks,
+        summary: extractedSummary,
         status: clarificationNeeded.length > 0 ? 'clarification_needed' : 'ready'
       };
 
@@ -534,7 +536,7 @@ export const App: React.FC = () => {
 
     const client = new OpenRouterClient(config);
     try {
-      const extracted = await TaskExtractorService.extractTasks(
+      const { tasks: extracted, summary: extractedSummary } = await TaskExtractorService.extractTasksAndTitle(
         currentMeeting.id,
         currentMeeting.date,
         currentMeeting.segments,
@@ -544,7 +546,8 @@ export const App: React.FC = () => {
 
       const updatedMeeting: Meeting = {
         ...currentMeeting,
-        tasks: extracted
+        tasks: extracted,
+        summary: extractedSummary || currentMeeting.summary
       };
 
       await AudioStorage.saveMeeting(updatedMeeting);
@@ -562,6 +565,57 @@ export const App: React.FC = () => {
     } finally {
       setIsExtractingTasks(false);
     }
+  };
+
+  /**
+   * Generates a ~50-word concise summary for the current meeting
+   */
+  const handleGenerateMeetingSummary = async (targetMeetingId?: string) => {
+    const meetingToSummarize = targetMeetingId
+      ? meetings.find((m) => m.id === targetMeetingId) || currentMeeting
+      : currentMeeting;
+
+    if (!meetingToSummarize) return;
+    setIsGeneratingSummary(true);
+
+    const client = new OpenRouterClient(config);
+    try {
+      const generatedSummary = await TaskExtractorService.generateSummary(
+        meetingToSummarize.date,
+        meetingToSummarize.segments,
+        meetingToSummarize.speakers,
+        client.hasApiKey() ? client : undefined,
+        {
+          onProgressLog: (log) => setReasoningLogs((prev) => [...prev, log]),
+          onReasoningChunk: (chunk) => setLiveReasoningText((prev) => prev + chunk)
+        }
+      );
+
+      const updatedMeeting: Meeting = {
+        ...meetingToSummarize,
+        summary: generatedSummary
+      };
+
+      await AudioStorage.saveMeeting(updatedMeeting);
+      setMeetings((prev) => prev.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m)));
+    } catch (err) {
+      console.error('Fehler beim Generieren der Zusammenfassung:', err);
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
+  /**
+   * Manually update the meeting summary (user edit)
+   */
+  const handleUpdateMeetingSummary = async (newSummary: string) => {
+    if (!currentMeeting) return;
+    const updatedMeeting: Meeting = {
+      ...currentMeeting,
+      summary: newSummary
+    };
+    await AudioStorage.saveMeeting(updatedMeeting);
+    setMeetings((prev) => prev.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m)));
   };
 
   /**
@@ -615,9 +669,10 @@ export const App: React.FC = () => {
       const isManualTitle = currentMeeting.isTitleManuallySet === true;
       let finalTitle = currentMeeting.title;
       let finalTasks = currentMeeting.tasks;
+      let finalSummary = currentMeeting.summary;
 
       try {
-        const { tasks: reExtractedTasks, meetingTitle: newlySuggestedTitle } =
+        const { tasks: reExtractedTasks, meetingTitle: newlySuggestedTitle, summary: newlySuggestedSummary } =
           await TaskExtractorService.extractTasksAndTitle(
             currentMeeting.id,
             currentMeeting.date,
@@ -638,6 +693,10 @@ export const App: React.FC = () => {
         if (!isManualTitle && newlySuggestedTitle && !newlySuggestedTitle.startsWith('Meeting vom ')) {
           finalTitle = newlySuggestedTitle;
         }
+
+        if (newlySuggestedSummary) {
+          finalSummary = newlySuggestedSummary;
+        }
       } catch (err) {
         console.warn('Aufgaben- und Titel-Aktualisierung bei erneuter Transkription übersprungen:', err);
       }
@@ -649,6 +708,7 @@ export const App: React.FC = () => {
         speakers,
         segments,
         tasks: finalTasks,
+        summary: finalSummary,
         status: clarificationNeeded.length > 0 ? 'clarification_needed' : 'ready'
       };
 
@@ -1041,6 +1101,9 @@ export const App: React.FC = () => {
             onOpenSettings={() => setIsSettingsOpen(true)}
             onNavigateTab={setActiveTab}
             onUpdateMeetingTitle={handleUpdateMeetingTitle}
+            onGenerateSummary={() => handleGenerateMeetingSummary()}
+            isGeneratingSummary={isGeneratingSummary}
+            onUpdateSummary={handleUpdateMeetingSummary}
           />
         )}
 

@@ -387,4 +387,50 @@ describe('Speaker Deduction & Date Utils', () => {
     const finalTitleAuto = isAutoManual ? autoMeeting.title : newAiTitle;
     expect(finalTitleAuto).toBe('KI-Vorschlag Neu');
   });
+
+  it('generates a concise meeting summary in approximately 50 words', async () => {
+    const { TaskExtractorService } = await import('../src/services/ai/taskExtractor');
+    const segments = [
+      {
+        id: 's1',
+        speakerId: 'spk_1',
+        speakerLabel: 'Florian',
+        startTime: 0,
+        endTime: 5,
+        text: 'Wir besprechen heute die Zubereitung von Auberginen und Zucchinis für das Team-Event am Wochenende.'
+      },
+      {
+        id: 's2',
+        speakerId: 'spk_2',
+        speakerLabel: 'Torben',
+        startTime: 5.5,
+        endTime: 12,
+        text: 'Perfekt, ich kümmere mich um den Einkauf auf dem Wochenmarkt und bringe frische Gewürze und Olivenöl mit.'
+      },
+      {
+        id: 's3',
+        speakerId: 'spk_1',
+        speakerLabel: 'Florian',
+        startTime: 12.5,
+        endTime: 18,
+        text: 'Super, dann übernehme ich das Schneiden und den Grillaufbau am Samstag Vormittag.'
+      }
+    ];
+
+    const speakers = [
+      { id: 'spk_1', label: 'Sprecher 1', assignedName: 'Florian', confidence: 1.0, color: '#3b82f6' },
+      { id: 'spk_2', label: 'Sprecher 2', assignedName: 'Torben', confidence: 1.0, color: '#10b981' }
+    ];
+
+    const summary = await TaskExtractorService.generateSummary('2026-09-20T16:00:00Z', segments, speakers);
+    expect(summary).toBeDefined();
+    expect(typeof summary).toBe('string');
+    
+    // Check word count is approximately 50 words (between 25 and 75 words)
+    const wordCount = summary.trim().split(/\s+/).length;
+    expect(wordCount).toBeGreaterThanOrEqual(25);
+    expect(wordCount).toBeLessThanOrEqual(75);
+    expect(summary).toContain('Florian');
+    expect(summary).toContain('Torben');
+  });
 });

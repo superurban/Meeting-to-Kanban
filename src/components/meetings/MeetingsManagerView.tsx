@@ -176,6 +176,11 @@ export const MeetingsManagerView: React.FC<MeetingsManagerViewProps> = ({
                                 minute: '2-digit'
                               })}
                             </span>
+                            {meeting.summary && (
+                              <p className="text-[11px] text-[var(--text-secondary)] line-clamp-1 mt-1 italic max-w-sm">
+                                "{meeting.summary}"
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>

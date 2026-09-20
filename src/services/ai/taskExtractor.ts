@@ -5,6 +5,7 @@ import { parseRelativeGermanDate } from '../../utils/dateUtils';
 export interface TaskExtractionResult {
   tasks: Task[];
   meetingTitle: string;
+  summary: string;
 }
 
 export class TaskExtractorService {
@@ -27,7 +28,7 @@ export class TaskExtractorService {
   }
 
   /**
-   * Extracts Kanban tasks AND a suggested meeting title from the transcript
+   * Extracts Kanban tasks, a suggested meeting title AND a ~50-word summary from the transcript
    */
   static async extractTasksAndTitle(
     meetingId: string,
@@ -65,11 +66,12 @@ export class TaskExtractorService {
 
     if (client && client.hasApiKey()) {
       const summaryModel = client.getConfig().summaryModel || 'deepseek/deepseek-chat';
-      callbacks?.onProgressLog?.(`Extrahiere Aufgaben & Meeting-Titel mit ${summaryModel}...`);
+      callbacks?.onProgressLog?.(`Extrahiere Aufgaben, 50-Wörter-Zusammenfassung & Meeting-Titel mit ${summaryModel}...`);
 
       const prompt = `Analysiere folgendes Meeting-Transkript und erstelle:
 1. Einen prägnanten, passenden Titel für das Meeting (max. 3-6 Wörter, z.B. "Spülmaschine & Haushaltsplan", "Sprint Planning & Deployment", "Produktstrategie Q4").
-2. Eine präzise Aufgabenliste für ein Kanban-Board.
+2. Eine prägnante Zusammenfassung des Meetings in genau ca. 50 Wörtern (Zielkorridor: 40 bis 60 Wörter). Fasse die wesentlichen Themen, Vereinbarungen und Ergebnisse in fließendem Deutsch zusammen.
+3. Eine präzise Aufgabenliste für ein Kanban-Board.
 
 Meeting-Datum: ${weekdayName}, ${dateFormatted} (${meetingDate.split('T')[0]})
 Bekannte Teilnehmer: ${knownParticipants}
@@ -92,6 +94,7 @@ Anforderungen für jeden Task:
 Antworte ausschließlich im JSON-Format mit dieser Struktur:
 {
   "meetingTitle": "Prägnanter Titel für das Meeting",
+  "summary": "Prägnante Zusammenfassung in ca. 50 Wörtern...",
   "tasks": [
     {
       "title": "Titel der Aufgabe",
@@ -109,7 +112,7 @@ Antworte ausschließlich im JSON-Format mit dieser Struktur:
         const response = await client.chatCompletion({
           prompt,
           model: summaryModel,
-          system: 'Du bist ein erfahrener Projektmanager und agiler Coach. Du extrahierst verbindliche Aufgaben, präzise Fälligkeitstermine und treffende Meeting-Titel aus Transkripten.',
+          system: 'Du bist ein erfahrener Projektmanager und agiler Coach. Du extrahierst verbindliche Aufgaben, präzise Fälligkeitstermine, treffende Meeting-Titel und exakte 50-Wörter-Zusammenfassungen aus Transkripten.',
           temperature: 0.2,
           stream: true,
           onReasoning: callbacks?.onReasoningChunk,
@@ -131,9 +134,12 @@ Antworte ausschließlich im JSON-Format mit dieser Struktur:
           : (taskItems.length > 0 && taskItems[0].title ? String(taskItems[0].title) : defaultTitle);
         const suggestedTitle = rawTitle.replace(/^["'„“«»`]+|["'„“«»`]+$/g, '').trim() || defaultTitle;
 
+        const rawSummary = (parsed.summary && typeof parsed.summary === 'string' && parsed.summary.trim())
+          ? parsed.summary.trim().replace(/^["'„“«»`]+|["'„“«»`]+$/g, '').trim()
+          : this.heuristicSummary(segments, speakers);
+
         const tasks: Task[] = taskItems.map((item, index) => {
           // Robust deterministic date validation:
-          // Check quote and description for relative German dates/weekdays
           const textToCheck = [item.quote, item.description, item.title].filter(Boolean).join(' ');
           const deterministicDate = parseRelativeGermanDate(textToCheck, baseDate);
 
@@ -160,7 +166,7 @@ Antworte ausschließlich im JSON-Format mit dieser Struktur:
           };
         });
 
-        return { tasks, meetingTitle: suggestedTitle };
+        return { tasks, meetingTitle: suggestedTitle, summary: rawSummary };
       } catch (err) {
         console.warn('LLM task extraction failed, falling back to heuristic extractor:', err);
       }
@@ -169,7 +175,98 @@ Antworte ausschließlich im JSON-Format mit dieser Struktur:
     // Heuristic / Demo rule-based task extractor
     const fallbackTasks = this.heuristicExtract(meetingId, meetingDate, segments, speakerNameMap);
     const fallbackTitle = fallbackTasks.length > 0 ? fallbackTasks[0].title : defaultTitle;
-    return { tasks: fallbackTasks, meetingTitle: fallbackTitle };
+    const fallbackSummary = this.heuristicSummary(segments, speakers);
+    return { tasks: fallbackTasks, meetingTitle: fallbackTitle, summary: fallbackSummary };
+  }
+
+  /**
+   * Generates a standalone ~50-word concise summary of the meeting
+   */
+  static async generateSummary(
+    meetingDate: string,
+    segments: TranscriptSegment[],
+    speakers: Speaker[],
+    client?: OpenRouterClient,
+    callbacks?: {
+      onProgressLog?: (log: string) => void;
+      onReasoningChunk?: (chunk: string) => void;
+    }
+  ): Promise<string> {
+    const speakerNameMap = new Map<string, string>();
+    speakers.forEach((s) => {
+      speakerNameMap.set(s.id, s.assignedName || s.label);
+    });
+
+    const formattedTranscript = segments
+      .map((s) => {
+        const name = speakerNameMap.get(s.speakerId) || s.speakerLabel;
+        return `${name}: "${s.text}"`;
+      })
+      .join('\n');
+
+    const knownParticipants = speakers
+      .map((s) => s.assignedName || s.label)
+      .join(', ');
+
+    if (client && client.hasApiKey()) {
+      const summaryModel = client.getConfig().summaryModel || 'deepseek/deepseek-chat';
+      callbacks?.onProgressLog?.(`Generiere 50-Wörter-Zusammenfassung mit ${summaryModel}...`);
+
+      const prompt = `Fasse folgendes Meeting-Transkript in genau ca. 50 Wörtern (Zielkorridor: 40 bis 60 Wörter) in flüssigem Deutsch zusammen.
+Gehe auf die Kerninhalte, besprochenen Themen und wesentlichen Vereinbarungen ein.
+Verwende keine Aufzählungszeichen oder Bulletpoints, sondern einen kompakten, informativen Fließtext.
+
+Teilnehmer: ${knownParticipants}
+Transkript:
+${formattedTranscript}
+
+Antworte ausschließlich mit dem reinen Zusammenfassungstext ohne Vorbemerkungen oder Anführungszeichen.`;
+
+      try {
+        const response = await client.chatCompletion({
+          prompt,
+          model: summaryModel,
+          system: 'Du bist ein präziser Executive-Assistent. Du erstellst exakte, informative Meeting-Zusammenfassungen im geforderten Umfang von ca. 50 Wörtern.',
+          temperature: 0.3,
+          stream: true,
+          onReasoning: callbacks?.onReasoningChunk,
+          onApiLog: callbacks?.onProgressLog
+        });
+
+        const cleanSummary = response.replace(/^["'„“«»`]+|["'„“«»`]+$/g, '').trim();
+        if (cleanSummary.length > 20) {
+          return cleanSummary;
+        }
+      } catch (err) {
+        console.warn('AI summary generation failed, falling back to heuristic summary:', err);
+      }
+    }
+
+    return this.heuristicSummary(segments, speakers);
+  }
+
+  /**
+   * Rule-based heuristic summary (approx 45-55 words)
+   */
+  public static heuristicSummary(
+    segments: TranscriptSegment[],
+    speakers: Speaker[]
+  ): string {
+    const speakerNames = speakers.map(s => s.assignedName || s.label).filter(Boolean);
+    const speakerList = speakerNames.length > 0 ? speakerNames.join(' und ') : 'den Teilnehmern';
+
+    const substantive = segments
+      .map(s => s.text.trim())
+      .filter(t => t.length > 15 && !/^(hallo|hi|guten morgen|moin|tschüss|ja|nein|ok)\b/i.test(t))
+      .slice(0, 3)
+      .join(' ');
+
+    if (!substantive) {
+      return `In diesem Meeting stimmten sich ${speakerList} zu aktuellen Themen ab. Es wurden wesentliche Punkte erörtert und die nächsten Schritte für die anstehende Zusammenarbeit vereinbart. Alle Vereinbarungen wurden festgehalten und zur weiteren Nachverfolgung vorbereitet.`;
+    }
+
+    const snippet = substantive.length > 150 ? substantive.slice(0, 147) + '...' : substantive;
+    return `In diesem Gespräch tauschten sich ${speakerList} zu wesentlichen Inhalten aus. Diskutiert wurden unter anderem: "${snippet}". Die Teilnehmer trafen gemeinsame Absprachen und definierten verbindliche nächste Schritte zur weiteren Umsetzung im Team.`;
   }
 
   private static heuristicExtract(

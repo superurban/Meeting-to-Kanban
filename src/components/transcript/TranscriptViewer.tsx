@@ -23,6 +23,9 @@ interface TranscriptViewerProps {
   onNavigateTab?: (tab: AppTab) => void;
   onMergeSpeakers?: (sourceSpeakerId: string, targetSpeakerId: string) => void;
   onUpdateMeetingTitle?: (meetingId: string, newTitle: string) => void;
+  onGenerateSummary?: () => Promise<void>;
+  isGeneratingSummary?: boolean;
+  onUpdateSummary?: (summary: string) => Promise<void>;
 }
 
 export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
@@ -40,7 +43,10 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   onOpenSettings,
   onNavigateTab,
   onMergeSpeakers,
-  onUpdateMeetingTitle
+  onUpdateMeetingTitle,
+  onGenerateSummary,
+  isGeneratingSummary = false,
+  onUpdateSummary
 }) => {
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
   const [playingSpeakerId, setPlayingSpeakerId] = useState<string | null>(null);
@@ -52,10 +58,16 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(meeting.title || '');
 
+  // 50-Word Summary Editing State
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [summaryInput, setSummaryInput] = useState(meeting.summary || '');
+
   useEffect(() => {
     setTitleInput(meeting.title || '');
     setIsEditingTitle(false);
-  }, [meeting.id, meeting.title]);
+    setSummaryInput(meeting.summary || '');
+    setIsEditingSummary(false);
+  }, [meeting.id, meeting.title, meeting.summary]);
 
   const handleSaveTitle = () => {
     const trimmed = titleInput.trim();
@@ -345,6 +357,113 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
 
         {/* Hintergrund-Verarbeitungs-Jobs für dieses Meeting */}
         <MeetingJobsList jobs={jobs.filter((j) => j.meetingId === meeting.id)} />
+
+        {/* 50-Wörter Zusammenfassung */}
+        <div className="pt-3 border-t space-y-1.5" style={{ borderColor: 'var(--border-color)' }}>
+          {meeting.summary ? (
+            <div 
+              className="p-3 sm:p-3.5 rounded-lg border text-xs leading-relaxed space-y-1.5"
+              style={{ backgroundColor: 'var(--bg-subtle)', borderColor: 'var(--border-color)' }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span>Zusammenfassung</span>
+                  <span className="text-[11px] font-normal text-[var(--text-muted)] font-mono">
+                    ({meeting.summary.trim().split(/\s+/).filter(Boolean).length} Wörter)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSummaryInput(meeting.summary || '');
+                      setIsEditingSummary(!isEditingSummary);
+                    }}
+                    className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                    title="Zusammenfassung bearbeiten"
+                    aria-label="Zusammenfassung bearbeiten"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                  {onGenerateSummary && (
+                    <button
+                      type="button"
+                      onClick={onGenerateSummary}
+                      disabled={isGeneratingSummary}
+                      className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer ml-1 font-medium"
+                      title="Zusammenfassung mit KI neu generieren"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isGeneratingSummary ? 'animate-spin' : ''}`} />
+                      <span>{isGeneratingSummary ? 'Fasse zusammen...' : 'Neu generieren'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isEditingSummary ? (
+                <div className="space-y-2 pt-1">
+                  <textarea
+                    value={summaryInput}
+                    onChange={(e) => setSummaryInput(e.target.value)}
+                    rows={3}
+                    className="input-saas w-full p-2.5 text-xs leading-relaxed"
+                    placeholder="Zusammenfassung eingeben..."
+                  />
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSummaryInput(meeting.summary || '');
+                        setIsEditingSummary(false);
+                      }}
+                      className="btn-secondary text-xs py-1 px-2.5"
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onUpdateSummary) {
+                          onUpdateSummary(summaryInput);
+                        }
+                        setIsEditingSummary(false);
+                      }}
+                      className="btn-primary text-xs py-1 px-3"
+                    >
+                      Speichern
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[var(--text-secondary)] leading-relaxed">
+                  {meeting.summary}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div 
+              className="p-3 rounded-lg border border-dashed flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs"
+              style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-subtle)' }}
+            >
+              <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                <Sparkles className="w-4 h-4 text-blue-500 shrink-0" />
+                <span>Noch keine 50-Wörter-Zusammenfassung vorhanden.</span>
+              </div>
+              {onGenerateSummary && (
+                <button
+                  type="button"
+                  onClick={onGenerateSummary}
+                  disabled={isGeneratingSummary || meeting.segments.length === 0}
+                  className="btn-secondary text-xs py-1 px-3 flex items-center gap-1.5 shrink-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                  <span>{isGeneratingSummary ? 'Fasse zusammen...' : 'Zusammenfassung generieren (50 Wörter)'}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Sprecher erscheinen als Liste direkt unter Meeting */}
         {meeting.speakers.length > 0 && (
