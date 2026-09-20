@@ -55,7 +55,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     },
     {
       id: 'kanban' as AppTab,
-      label: 'Kanban Board',
+      label: 'Aufgaben',
       icon: Kanban,
       badge: taskCount > 0 ? `${taskCount}` : null,
       badgeClass: 'badge-on-track'
