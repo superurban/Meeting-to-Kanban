@@ -76,6 +76,9 @@ export const Navigation: React.FC<NavigationProps> = ({
                     if (onOpenMeetingsManager) onOpenMeetingsManager();
                   } else if (onSelectMeeting) {
                     onSelectMeeting(e.target.value);
+                    if (onSelectTab) {
+                      onSelectTab('transcript');
+                    }
                   }
                 }}
               >

@@ -87,11 +87,12 @@ export const App: React.FC = () => {
     AudioStorage.saveOpenRouterConfig(newConfig);
   };
 
-  const handleSelectMeeting = async (id: string) => {
+  const handleSelectMeeting = async (id: string, targetTab: 'record' | 'transcript' | 'speakers' | 'kanban' = 'transcript') => {
     const fullMeeting = await AudioStorage.getMeeting(id);
     if (fullMeeting) {
       setCurrentMeetingId(id);
       setMeetings((prev) => prev.map((m) => (m.id === id ? fullMeeting : m)));
+      setActiveTab(targetTab);
     }
   };
 

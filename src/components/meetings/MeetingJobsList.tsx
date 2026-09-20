@@ -4,9 +4,10 @@ import { MeetingJob } from '../../types';
 
 interface MeetingJobsListProps {
   jobs: MeetingJob[];
+  onOpenTranscript?: (meetingId: string) => void;
 }
 
-export const MeetingJobsList: React.FC<MeetingJobsListProps> = ({ jobs }) => {
+export const MeetingJobsList: React.FC<MeetingJobsListProps> = ({ jobs, onOpenTranscript }) => {
   if (!jobs || jobs.length === 0) return null;
 
   return (
@@ -19,11 +20,18 @@ export const MeetingJobsList: React.FC<MeetingJobsListProps> = ({ jobs }) => {
         return (
           <div
             key={job.id}
+            onClick={() => {
+              if (onOpenTranscript) {
+                onOpenTranscript(job.meetingId);
+              }
+            }}
             className={`p-3.5 sm:p-4 rounded-xl border transition-all ${
+              onOpenTranscript ? 'cursor-pointer hover:shadow-sm' : ''
+            } ${
               isRunning
-                ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/80 dark:border-blue-900/50 shadow-xs'
+                ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/80 dark:border-blue-900/50 shadow-xs hover:border-blue-300'
                 : isCompleted
-                  ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40'
+                  ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 hover:border-emerald-300'
                   : 'bg-red-50/40 dark:bg-red-950/20 border-red-200 dark:border-red-900/40'
             }`}
           >
@@ -72,6 +80,11 @@ export const MeetingJobsList: React.FC<MeetingJobsListProps> = ({ jobs }) => {
               <span className="truncate">
                 {job.step}
               </span>
+              {onOpenTranscript && (
+                <span className="text-blue-600 dark:text-blue-400 font-medium shrink-0 ml-2 hover:underline">
+                  Zur Transkription →
+                </span>
+              )}
             </div>
           </div>
         );

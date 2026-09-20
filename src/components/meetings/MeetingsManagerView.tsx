@@ -233,10 +233,10 @@ export const MeetingsManagerView: React.FC<MeetingsManagerViewProps> = ({
                           <button
                             onClick={() => {
                               onSelectMeeting(meeting.id);
-                              onNavigateTab('kanban');
+                              onNavigateTab('transcript');
                             }}
                             className="btn-secondary text-xs py-1 px-2.5"
-                            title="Meeting öffnen und zum Kanban Board wechseln"
+                            title="Meeting öffnen und zur Transkription wechseln"
                           >
                             <span>Öffnen</span>
                             <ArrowRight className="w-3 h-3" />

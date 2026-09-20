@@ -167,7 +167,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   return (
     <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 py-5 space-y-4 pb-24 md:pb-8">
       {/* Background Processing Job List */}
-      <MeetingJobsList jobs={jobs.filter((j) => j.meetingId === meeting.id)} />
+      <MeetingJobsList
+        jobs={jobs.filter((j) => j.meetingId === meeting.id)}
+        onOpenTranscript={() => onNavigateTab && onNavigateTab('transcript')}
+      />
 
       {/* Control Bar: Filter, Search, New Task, Export */}
       <div 
