@@ -57,14 +57,17 @@ export const MeetingsManagerView: React.FC<MeetingsManagerViewProps> = ({
 
         <div className="flex items-center gap-2.5">
           {/* Search Input */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2.5 pointer-events-none" />
+          <div className="relative min-w-[240px] sm:w-80">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-[var(--text-muted)]" />
+            </div>
             <input
               type="text"
               placeholder="Meetings durchsuchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-saas pl-8 text-xs w-48 sm:w-64"
+              style={{ paddingLeft: '38px' }}
+              className="input-saas text-xs w-full h-9"
             />
           </div>
 

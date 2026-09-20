@@ -174,15 +174,18 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         }}
       >
         <div className="flex flex-wrap items-center gap-2.5 flex-1">
-          {/* Search Input */}
-          <div className="relative flex-1 min-w-[180px] max-w-xs">
-            <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2.5 pointer-events-none" />
+          {/* Search Input (spacious & clean alignment) */}
+          <div className="relative flex-1 min-w-[240px] sm:min-w-[300px] max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-[var(--text-muted)]" />
+            </div>
             <input
               type="text"
               placeholder="Aufgaben filtern..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-saas pl-8 text-xs w-full"
+              style={{ paddingLeft: '38px' }}
+              className="input-saas text-xs w-full h-9"
             />
           </div>
 
