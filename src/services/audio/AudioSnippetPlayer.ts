@@ -40,7 +40,10 @@ export class AudioSnippetPlayer {
       this.activeCallback(true);
     }
 
-    const naturalDuration = Math.max(0.3, endTime - startTime);
+    // Add grace padding (0.6s) to ensure the last word/syllable is not clipped by AI timestamp truncation
+    const gracePadding = maxDurationSeconds ? 0 : 0.6;
+    const requestedEndTime = endTime + gracePadding;
+    const naturalDuration = Math.max(0.3, requestedEndTime - startTime);
     const duration = maxDurationSeconds ? Math.min(maxDurationSeconds, naturalDuration) : naturalDuration;
 
     // 1. If it's a real Blob, decode via Web Audio API for 100% reliable original voice playback

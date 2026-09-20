@@ -40,11 +40,6 @@ export const MeetingJobsList: React.FC<MeetingJobsListProps> = ({ jobs }) => {
                 <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
                   {job.title}
                 </span>
-                {isRunning && (
-                  <span className="text-[10px] font-medium py-0.5 px-1.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 shrink-0">
-                    Hintergrund-Job
-                  </span>
-                )}
               </div>
 
               <span className={`font-mono text-xs font-semibold shrink-0 ${
@@ -74,14 +69,9 @@ export const MeetingJobsList: React.FC<MeetingJobsListProps> = ({ jobs }) => {
 
             {/* Subtitle / Step Status */}
             <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] mt-2">
-              <span className="truncate max-w-[80%]">
+              <span className="truncate">
                 {job.step}
               </span>
-              {isRunning && (
-                <span className="italic text-[10px] opacity-75 hidden sm:inline">
-                  Läuft im Hintergrund
-                </span>
-              )}
             </div>
           </div>
         );
