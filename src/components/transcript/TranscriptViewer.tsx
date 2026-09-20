@@ -23,6 +23,9 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   onNavigateTab
 }) => {
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
+  const [playingSpeakerId, setPlayingSpeakerId] = useState<string | null>(null);
+  const [editingSpeakerId, setEditingSpeakerId] = useState<string | null>(null);
+  const [editNameVal, setEditNameVal] = useState('');
 
   const speakerMap = new Map<string, Speaker>();
   meeting.speakers.forEach((s) => speakerMap.set(s.id, s));
@@ -31,6 +34,33 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   const unassignedSpeakers = meeting.speakers.filter(
     (s) => !s.assignedName || s.confidence < 0.8
   );
+
+  const handlePlaySpeaker5s = (spk: Speaker) => {
+    if (playingSpeakerId === spk.id) {
+      AudioSnippetPlayer.stopCurrent();
+      setPlayingSpeakerId(null);
+      return;
+    }
+
+    const bestSeg = meeting.segments.find((s) => s.speakerId === spk.id);
+    if (!bestSeg) return;
+
+    setPlayingSpeakerId(spk.id);
+    const startTime = bestSeg.startTime;
+    const dur = Math.max(0.5, bestSeg.endTime - bestSeg.startTime);
+    const endTime = startTime + Math.min(5.0, dur);
+
+    AudioSnippetPlayer.playSnippet(
+      meeting.audioBlob,
+      startTime,
+      endTime,
+      bestSeg.text,
+      (isPlaying) => {
+        if (!isPlaying) setPlayingSpeakerId(null);
+      },
+      5.0
+    );
+  };
 
   const handlePlaySegment = (seg: TranscriptSegment) => {
     if (playingSegmentId === seg.id) {
@@ -87,36 +117,167 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
         </div>
       )}
 
-      {/* Action & Status Header */}
+      {/* Action & Status Header with Speakers List */}
       <div 
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border shadow-[var(--shadow-subtle)]"
+        className="p-4 rounded-lg border shadow-[var(--shadow-subtle)] space-y-3.5"
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border-color)'
         }}
       >
-        <div>
-          <h2 className="text-base font-semibold text-[var(--text-primary)]">
-            {meeting.title || 'Meeting-Transkript'}
-          </h2>
-          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
-            <span>{meeting.segments.length} Abschnitte</span>
-            <span>•</span>
-            <span>{meeting.speakers.length} erkannte Sprecher</span>
-            <span>•</span>
-            <span>{new Date(meeting.date).toLocaleDateString('de-DE')}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-[var(--text-primary)]">
+              {meeting.title || 'Meeting-Transkript'}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
+              <span>{meeting.segments.length} Abschnitte</span>
+              <span>•</span>
+              <span>{meeting.speakers.length} erkannte Sprecher</span>
+              <span>•</span>
+              <span>{new Date(meeting.date).toLocaleDateString('de-DE')}</span>
+            </div>
           </div>
+
+          {/* Action to trigger Kanban extraction */}
+          <button
+            onClick={onExtractTasks}
+            disabled={isExtractingTasks || meeting.segments.length === 0}
+            className="btn-primary text-xs shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{isExtractingTasks ? 'Analysiere Next Steps...' : 'Kanban-Tasks generieren'}</span>
+          </button>
         </div>
 
-        {/* Action to trigger Kanban extraction */}
-        <button
-          onClick={onExtractTasks}
-          disabled={isExtractingTasks || meeting.segments.length === 0}
-          className="btn-primary text-xs shrink-0"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>{isExtractingTasks ? 'Analysiere Next Steps...' : 'Kanban-Tasks generieren'}</span>
-        </button>
+        {/* Sprecher erscheinen als Liste direkt unter Meeting */}
+        {meeting.speakers.length > 0 && (
+          <div 
+            className="pt-3 border-t space-y-2"
+            style={{ borderColor: 'var(--border-color)' }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Erkannte Sprecher ({meeting.speakers.length})</span>
+              </span>
+              {onNavigateTab && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('speakers')}
+                  className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                >
+                  Alle Details & Hörproben
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {meeting.speakers.map((spk) => {
+                const segCount = meeting.segments.filter((s) => s.speakerId === spk.id).length;
+                const isIdentified = Boolean(spk.assignedName && spk.confidence >= 0.8);
+                const isPlaying = playingSpeakerId === spk.id;
+                const isEditing = editingSpeakerId === spk.id;
+
+                return (
+                  <div
+                    key={spk.id}
+                    className="p-2 rounded-md border flex items-center justify-between gap-2 text-xs transition-colors"
+                    style={{
+                      backgroundColor: 'var(--bg-subtle)',
+                      borderColor: 'var(--border-color)'
+                    }}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      {/* Avatar */}
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0"
+                        style={{ backgroundColor: spk.color || '#3b82f6' }}
+                      >
+                        {(spk.assignedName || spk.label).slice(0, 1).toUpperCase()}
+                      </div>
+
+                      {/* Name / Inline Edit */}
+                      {isEditing ? (
+                        <div className="flex items-center gap-1 flex-1 min-w-0">
+                          <input
+                            type="text"
+                            autoFocus
+                            value={editNameVal}
+                            onChange={(e) => setEditNameVal(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                if (editNameVal.trim()) onUpdateSpeakerName(spk.id, editNameVal.trim());
+                                setEditingSpeakerId(null);
+                              } else if (e.key === 'Escape') {
+                                setEditingSpeakerId(null);
+                              }
+                            }}
+                            className="input-saas py-0.5 px-1.5 text-xs w-full"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editNameVal.trim()) onUpdateSpeakerName(spk.id, editNameVal.trim());
+                              setEditingSpeakerId(null);
+                            }}
+                            className="btn-primary py-0.5 px-1.5 text-[11px]"
+                          >
+                            ✓
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-[var(--text-primary)] truncate">
+                              {spk.assignedName || spk.label}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingSpeakerId(spk.id);
+                                setEditNameVal(spk.assignedName || spk.label);
+                              }}
+                              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-0.5 rounded cursor-pointer"
+                              title="Name bearbeiten"
+                            >
+                              <Edit2 className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
+                            <span>{segCount} {segCount === 1 ? 'Abschnitt' : 'Abschnitte'}</span>
+                            <span>•</span>
+                            <span className={isIdentified ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400'}>
+                              {isIdentified ? 'Erkannt' : 'Unklar'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 5s Hörprobe Audio Button */}
+                    <button
+                      type="button"
+                      onClick={() => handlePlaySpeaker5s(spk)}
+                      className={`p-1.5 rounded-md border text-xs flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
+                        isPlaying 
+                          ? 'btn-danger animate-pulse' 
+                          : 'btn-secondary text-[var(--text-secondary)]'
+                      }`}
+                      title={isPlaying ? 'Stoppen' : '5s-Hörprobe abspielen'}
+                    >
+                      {isPlaying ? (
+                        <Square className="w-3 h-3 fill-current" />
+                      ) : (
+                        <Volume2 className="w-3 h-3" />
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Unassigned Speakers Clarification Banner */}
