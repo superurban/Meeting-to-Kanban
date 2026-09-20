@@ -212,10 +212,6 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
                           </button>
                         </div>
                       )}
-
-                      <span className="text-[11px] text-[var(--text-muted)] font-mono block">
-                        {speaker.label}
-                      </span>
                     </div>
                   </div>
 
