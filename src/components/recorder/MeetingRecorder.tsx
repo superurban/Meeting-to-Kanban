@@ -21,7 +21,9 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   onOpenSettings,
   hasApiKey,
   isProcessing,
-  processingStep
+  processingStep,
+  reasoningLogs,
+  liveReasoningText
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -195,7 +197,11 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
             )}
           </div>
         ) : (
-          <ProcessingProgressBar currentStep={processingStep} />
+          <ProcessingProgressBar
+            currentStep={processingStep}
+            reasoningLogs={reasoningLogs}
+            liveReasoningText={liveReasoningText}
+          />
         )}
 
         {/* Error message */}

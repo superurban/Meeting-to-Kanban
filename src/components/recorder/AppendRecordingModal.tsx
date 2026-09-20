@@ -12,6 +12,8 @@ interface AppendRecordingModalProps {
   onAppendRecording: (audioBlob: Blob, mimeType: string, durationSeconds: number) => Promise<void>;
   isProcessing: boolean;
   processingStep?: string;
+  reasoningLogs?: string[];
+  liveReasoningText?: string;
   hasApiKey: boolean;
   onOpenSettings: () => void;
 }
@@ -23,6 +25,8 @@ export const AppendRecordingModal: React.FC<AppendRecordingModalProps> = ({
   onAppendRecording,
   isProcessing,
   processingStep = '',
+  reasoningLogs,
+  liveReasoningText,
   hasApiKey,
   onOpenSettings
 }) => {
@@ -204,7 +208,11 @@ export const AppendRecordingModal: React.FC<AppendRecordingModalProps> = ({
         {/* Processing State with Progress Bar */}
         {isProcessing ? (
           <div className="py-3">
-            <ProcessingProgressBar currentStep={processingStep || 'Neuer Gesprächsabschnitt wird verarbeitet...'} />
+            <ProcessingProgressBar
+              currentStep={processingStep || 'Neuer Gesprächsabschnitt wird verarbeitet...'}
+              reasoningLogs={reasoningLogs}
+              liveReasoningText={liveReasoningText}
+            />
           </div>
         ) : (
           /* Live Recording with running Timer and Waveform */
