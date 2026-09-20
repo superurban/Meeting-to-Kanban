@@ -597,7 +597,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                   className={`absolute top-1 bottom-1 rounded transition-all duration-100 ${
                     isSegActive ? 'ring-2 ring-blue-500 z-10' : ''
                   } ${isSegPlaying ? 'animate-pulse z-10 ring-2 ring-red-500' : ''} ${
-                    isSegHovered ? 'scale-y-110 brightness-110 z-20 shadow-md' : 'opacity-85 hover:opacity-100'
+                    isSegHovered ? 'scale-y-125 brightness-125 z-20 shadow-lg ring-2 ring-blue-400 dark:ring-blue-300' : 'opacity-85 hover:opacity-100'
                   }`}
                   style={{
                     left: `${leftPct}%`,
@@ -702,6 +702,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
             const speaker = speakerMap.get(seg.speakerId);
             const isPlaying = playingSegmentId === seg.id;
             const isActive = activeSegmentId === seg.id;
+            const isHovered = hoveredSegment?.id === seg.id;
             const speakerName = speaker?.assignedName || speaker?.label || seg.speakerLabel;
 
             return (
@@ -713,8 +714,19 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                     ? 'bg-blue-50/80 dark:bg-blue-950/40 ring-1 ring-blue-500/50' 
                     : isPlaying 
                       ? 'bg-amber-50/60 dark:bg-amber-950/30 ring-1 ring-amber-500/40'
-                      : 'hover:bg-[var(--bg-subtle)]'
+                      : isHovered
+                        ? 'bg-[var(--bg-subtle)] ring-1 ring-[var(--border-color)]'
+                        : 'hover:bg-[var(--bg-subtle)]'
                 }`}
+                onMouseEnter={() => {
+                  setHoveredSegment(seg);
+                  const leftPct = (seg.startTime / totalDuration) * 100;
+                  const widthPct = Math.max(0.7, ((seg.endTime - seg.startTime) / totalDuration) * 100);
+                  setTooltipX(leftPct + widthPct / 2);
+                }}
+                onMouseLeave={() => {
+                  setHoveredSegment((prev) => (prev?.id === seg.id ? null : prev));
+                }}
               >
                 {/* Audio Snippet Playback Button (subtle, shows on hover or when playing) */}
                 <button
