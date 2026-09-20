@@ -282,4 +282,37 @@ describe('Speaker Deduction & Date Utils', () => {
     expect(updatedSpeakers.length).toBe(3);
     expect(updatedSpeakers.find(s => s.assignedName === 'Thomas')).toBeDefined();
   });
+
+  it('parseRelativeGermanDate correctly calculates "nächste Woche Dienstag" on Sunday 2026-09-20', () => {
+    const sundayBase = new Date('2026-09-20T14:00:00Z');
+    const quote = 'Äh Torben soll bitte die Spülmaschine anstellen. Fälligkeit nächste Woche Dienstag.';
+    
+    const dueDate = parseRelativeGermanDate(quote, sundayBase);
+    // On Sunday 20.09.2026, next week starts Monday 21.09.2026. Tuesday of next week is 22.09.2026!
+    expect(dueDate).toBe('2026-09-22');
+  });
+
+  it('TaskExtractorService extracts tasks and deterministic dueDate for Torben dishwasher task', async () => {
+    const { TaskExtractorService } = await import('../src/services/ai/taskExtractor');
+    const sundayBase = '2026-09-20T14:00:00Z';
+    const segments = [
+      {
+        id: 's_dish',
+        speakerId: 'spk_1',
+        speakerLabel: 'Florian',
+        startTime: 0,
+        endTime: 6,
+        text: 'Äh Torben soll bitte die Spülmaschine anstellen. Fälligkeit nächste Woche Dienstag.'
+      }
+    ];
+    const speakers = [
+      { id: 'spk_1', label: 'Sprecher 1', assignedName: 'Florian', confidence: 1.0, color: '#3b82f6' },
+      { id: 'spk_2', label: 'Sprecher 2', assignedName: 'Torben', confidence: 1.0, color: '#10b981' }
+    ];
+
+    const result = await TaskExtractorService.extractTasksAndTitle('meet_dish', sundayBase, segments, speakers);
+    expect(result.tasks.length).toBe(1);
+    expect(result.tasks[0].dueDate).toBe('2026-09-22');
+    expect(result.meetingTitle).toBeDefined();
+  });
 });

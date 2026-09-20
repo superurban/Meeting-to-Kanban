@@ -16,6 +16,7 @@ import { KanbanBoard } from './components/kanban/KanbanBoard';
 import { MeetingsManagerView } from './components/meetings/MeetingsManagerView';
 import { DeleteConfirmModal } from './components/meetings/DeleteConfirmModal';
 import { SettingsModal } from './components/settings/SettingsModal';
+import { MeetingTitleSuggestModal } from './components/meetings/MeetingTitleSuggestModal';
 
 export const App: React.FC = () => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -54,6 +55,9 @@ export const App: React.FC = () => {
 
   // Deletion Confirmation State
   const [deleteTargetMeeting, setDeleteTargetMeeting] = useState<Meeting | null>(null);
+
+  // Suggested Meeting Title Modal State
+  const [suggestedTitleModalMeeting, setSuggestedTitleModalMeeting] = useState<{ id: string; suggestedTitle: string } | null>(null);
 
   // Load meetings on mount
   useEffect(() => {
@@ -145,7 +149,7 @@ export const App: React.FC = () => {
     audioBlob: Blob,
     mimeType: string,
     durationSeconds: number,
-    title: string
+    title?: string
   ) => {
     setIsProcessing(true);
     setReasoningLogs([
@@ -168,6 +172,7 @@ export const App: React.FC = () => {
     const meetingDate = new Date().toISOString();
 
     try {
+      setProcessingStep('KI-Transkription & Diarisierung läuft...');
       // Real AI transcription of the user's audio with live reasoning stream
       const segments = await TranscriptionService.transcribeAudio(
         audioBlob,
@@ -202,8 +207,8 @@ export const App: React.FC = () => {
         `[speaker.resolve] ${speakers.length} Sprecher erfasst • ${clarificationNeeded.length} Sprecher ohne Namen.`
       ]);
 
-      setProcessingStep('Extrahiere Aufgaben mit DeepSeek...');
-      const tasks = await TaskExtractorService.extractTasks(
+      setProcessingStep('Extrahiere Aufgaben & Meeting-Titel...');
+      const { tasks, meetingTitle: extractedTitle } = await TaskExtractorService.extractTasksAndTitle(
         meetingId,
         meetingDate,
         segments,
@@ -218,6 +223,8 @@ export const App: React.FC = () => {
           }
         }
       );
+
+      const finalMeetingTitle = title?.trim() || extractedTitle || `Meeting vom ${new Date().toLocaleDateString('de-DE')}`;
 
       if (tasks.length === 0) {
         setReasoningLogs((prev) => [
@@ -235,7 +242,7 @@ export const App: React.FC = () => {
 
       const newMeeting: Meeting = {
         id: meetingId,
-        title,
+        title: finalMeetingTitle,
         date: meetingDate,
         durationSeconds,
         audioBlob,
@@ -257,6 +264,12 @@ export const App: React.FC = () => {
 
       // Automatically switch to Kanban board as requested
       setActiveTab('kanban');
+
+      // Prompt user with suggested title that can be easily overwritten or accepted
+      setSuggestedTitleModalMeeting({
+        id: meetingId,
+        suggestedTitle: finalMeetingTitle
+      });
     } catch (err) {
       console.error('Fehler in der Meeting-Verarbeitung:', err);
       alert('Ein Fehler ist bei der Verarbeitung aufgetreten: ' + (err instanceof Error ? err.message : String(err)));
@@ -1033,6 +1046,17 @@ export const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         onResetData={handleResetData}
       />
+
+      {/* Suggested Meeting Title Modal (allows overwriting or accepting with Enter) */}
+      {suggestedTitleModalMeeting && (
+        <MeetingTitleSuggestModal
+          isOpen={Boolean(suggestedTitleModalMeeting)}
+          meetingId={suggestedTitleModalMeeting.id}
+          initialTitle={suggestedTitleModalMeeting.suggestedTitle}
+          onSaveTitle={handleUpdateMeetingTitle}
+          onClose={() => setSuggestedTitleModalMeeting(null)}
+        />
+      )}
     </div>
   );
 };

@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, AlertCircle, RefreshCw, FileText } from 'lucide-react';
+import { Mic, Square, AlertCircle } from 'lucide-react';
 import { AudioRecorder } from '../../services/audio/AudioRecorder';
 import { formatDuration } from '../../utils/dateUtils';
-import { ModelReasoningBox } from './ModelReasoningBox';
+import { ProcessingProgressBar } from './ProcessingProgressBar';
 
 interface MeetingRecorderProps {
-  onRecordingComplete: (audioBlob: Blob, mimeType: string, durationSeconds: number, title: string) => Promise<void>;
+  onRecordingComplete: (audioBlob: Blob, mimeType: string, durationSeconds: number) => Promise<void>;
   onLoadDemo?: () => Promise<void>;
   onOpenSettings: () => void;
   hasApiKey: boolean;
@@ -21,23 +21,11 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
   onOpenSettings,
   hasApiKey,
   isProcessing,
-  processingStep,
-  reasoningLogs = [],
-  liveReasoningText = '',
-  currentModelName = 'Gemini 3.8 Flash'
+  processingStep
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
-  const [meetingTitle, setMeetingTitle] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Query title after recording
-  const [pendingAudio, setPendingAudio] = useState<{
-    blob: Blob;
-    mimeType: string;
-    durationSeconds: number;
-  } | null>(null);
-  const [showTitleModal, setShowTitleModal] = useState(false);
 
   const recorderRef = useRef<AudioRecorder | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -110,38 +98,13 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
       setIsRecording(false);
       setDuration(0);
 
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      const timeStr = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-      const defaultTitle = `Meeting vom ${dateStr}, ${timeStr}`;
-
-      setMeetingTitle(defaultTitle);
-      setPendingAudio({ blob, mimeType, durationSeconds });
-      setShowTitleModal(true);
+      // Directly start transcription and AI processing immediately
+      await onRecordingComplete(blob, mimeType, durationSeconds);
     } catch (err) {
       console.error('Fehler beim Stoppen:', err);
       setErrorMsg('Fehler beim Beenden der Aufnahme.');
       setIsRecording(false);
     }
-  };
-
-  const handleConfirmTitle = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!pendingAudio) return;
-
-    const title = meetingTitle.trim() || `Meeting vom ${new Date().toLocaleDateString('de-DE')}`;
-    const audio = pendingAudio;
-    setPendingAudio(null);
-    setShowTitleModal(false);
-    setMeetingTitle('');
-
-    await onRecordingComplete(audio.blob, audio.mimeType, audio.durationSeconds, title);
-  };
-
-  const handleCancelTitle = () => {
-    setPendingAudio(null);
-    setShowTitleModal(false);
-    setMeetingTitle('');
   };
 
   return (
@@ -232,22 +195,7 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-2 space-y-2.5 w-full max-w-xl">
-            <RefreshCw className="w-6 h-6 text-[var(--text-primary)] animate-spin" />
-            <div>
-              <p className="text-xs font-semibold text-[var(--text-primary)]">{processingStep}</p>
-              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Sprecher-Diarisierung & KI-Aufgabenextraktion aktiv</p>
-            </div>
-
-            {/* Live Model Reasoning & Progress Log Box */}
-            <ModelReasoningBox
-              modelName={currentModelName}
-              currentStep={processingStep}
-              reasoningLogs={reasoningLogs}
-              liveReasoningText={liveReasoningText}
-              isProcessing={isProcessing}
-            />
-          </div>
+          <ProcessingProgressBar currentStep={processingStep} />
         )}
 
         {/* Error message */}
@@ -258,69 +206,6 @@ export const MeetingRecorder: React.FC<MeetingRecorderProps> = ({
           </div>
         )}
       </div>
-
-      {/* Query Meeting Title Modal after Recording */}
-      {showTitleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div 
-            className="w-full max-w-md p-5 rounded-xl border shadow-[var(--shadow-modal)] animate-in zoom-in-95 duration-150"
-            style={{
-              backgroundColor: 'var(--bg-surface)',
-              borderColor: 'var(--border-color)'
-            }}
-          >
-            <div 
-              className="flex items-center justify-between pb-3 mb-3 border-b"
-              style={{ borderColor: 'var(--border-color)' }}
-            >
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                  Meeting-Bezeichnung festlegen
-                </h3>
-              </div>
-            </div>
-
-            <form onSubmit={handleConfirmTitle} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">
-                  Wie soll dieses Meeting heißen?
-                </label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={meetingTitle}
-                  onChange={(e) => setMeetingTitle(e.target.value)}
-                  placeholder="z.B. Sprint Planning, Strategie-Meeting, Review..."
-                  className="input-saas w-full text-sm py-2"
-                />
-                <p className="text-[11px] text-[var(--text-muted)] mt-1.5">
-                  Anschließend analysiert die KI die Sprachaufnahme und extrahiert Aufgaben für dein Kanban Board.
-                </p>
-              </div>
-
-              <div 
-                className="flex items-center justify-end gap-2 pt-3 border-t"
-                style={{ borderColor: 'var(--border-color)' }}
-              >
-                <button
-                  type="button"
-                  onClick={handleCancelTitle}
-                  className="btn-secondary text-xs"
-                >
-                  Aufnahme verwerfen
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary text-xs"
-                >
-                  Weiter zur KI-Verarbeitung
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
