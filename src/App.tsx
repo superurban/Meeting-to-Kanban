@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Meeting, SpeakerClarificationRequest, OpenRouterConfig, Task, Speaker, TranscriptSegment } from './types';
+import { Meeting, SpeakerClarificationRequest, OpenRouterConfig, Task, Speaker, TranscriptSegment, MeetingJob } from './types';
 import { AudioStorage } from './services/audio/AudioStorage';
 import { OpenRouterClient } from './services/ai/openrouter';
 import { TranscriptionService } from './services/ai/transcription';
@@ -58,6 +58,9 @@ export const App: React.FC = () => {
 
   // Suggested Meeting Title Modal State
   const [suggestedTitleModalMeeting, setSuggestedTitleModalMeeting] = useState<{ id: string; suggestedTitle: string } | null>(null);
+
+  // Background Meeting Jobs State (Job-Liste)
+  const [meetingJobs, setMeetingJobs] = useState<MeetingJob[]>([]);
 
   // Load meetings on mount
   useEffect(() => {
@@ -659,8 +662,34 @@ export const App: React.FC = () => {
       return;
     }
 
+    const jobId = `job_append_${Date.now()}`;
+    const targetMeetingId = currentMeeting.id;
+
+    // Register background job in Job-Liste
+    const initialJob: MeetingJob = {
+      id: jobId,
+      meetingId: targetMeetingId,
+      title: `Gesprächsabschnitt hinzufügen (+${Math.round(newDurationSeconds)}s)`,
+      step: 'Tonspuren werden zusammengeführt...',
+      progress: 15,
+      status: 'running',
+      createdAt: new Date().toISOString()
+    };
+    setMeetingJobs((prev) => [initialJob, ...prev]);
+
+    const updateJob = (
+      step: string,
+      progress: number,
+      status: 'running' | 'completed' | 'failed' = 'running',
+      error?: string
+    ) => {
+      setMeetingJobs((prev) =>
+        prev.map((j) => (j.id === jobId ? { ...j, step, progress, status, error } : j))
+      );
+    };
+
     setIsAppendingRecording(true);
-    setTaskAlertMessage('Neuer Gesprächsabschnitt wird verarbeitet...');
+    setTaskAlertMessage('Neuer Gesprächsabschnitt wird im Hintergrund verarbeitet...');
     setLiveReasoningText('');
     setReasoningLogs([
       `[append.start] Hänge ${newDurationSeconds.toFixed(1)}s Aufnahme an "${currentMeeting.title}" an...`
@@ -668,6 +697,7 @@ export const App: React.FC = () => {
 
     try {
       // 1. Concatenate audio with Web Audio API
+      updateJob('Tonspuren werden zusammengeführt...', 25);
       setReasoningLogs((prev) => [...prev, `[audio.concat] Führe bisherige und neue Tonspur zusammen...`]);
       const { concatAudioBlobs } = await import('./services/audio/wavConverter');
       
@@ -684,6 +714,7 @@ export const App: React.FC = () => {
       ]);
 
       // 2. Transcribe ONLY the newly appended portion (fast & cost-efficient)
+      updateJob('KI-Transkription & Sprecher-Diarisierung läuft...', 50);
       setReasoningLogs((prev) => [
         ...prev,
         `[transcribe.new] Starte KI-Diarisierung des neuen Abschnitts...`
@@ -705,6 +736,7 @@ export const App: React.FC = () => {
       );
 
       // 3. Offset timestamps of new segments so they continue seamlessly
+      updateJob('Zeitstempel synchronisieren...', 70);
       const nowTimestamp = Date.now();
       const adjustedNewSegments: TranscriptSegment[] = newRawSegments.map((seg, idx) => ({
         ...seg,
@@ -719,6 +751,7 @@ export const App: React.FC = () => {
       ]);
 
       // 4. Resolve and merge speakers
+      updateJob('Sprecherprofile werden abgeglichen...', 80);
       const { speakers: deducedNewSpeakers } = await SpeakerDeductionService.resolveSpeakers(
         adjustedNewSegments,
         client.hasApiKey() ? client : undefined
@@ -768,6 +801,7 @@ export const App: React.FC = () => {
       const combinedSegments = [...currentMeeting.segments, ...finalizedNewSegments];
 
       // 5. Extract additional tasks from the newly appended segments
+      updateJob('Neue Aufgaben werden extrahiert...', 90);
       setReasoningLogs((prev) => [
         ...prev,
         `[kanban.extract] Prüfe neuen Gesprächsabschnitt auf neue Aufgaben...`
@@ -792,6 +826,8 @@ export const App: React.FC = () => {
 
       const combinedTasks = [...currentMeeting.tasks, ...additionalTasks];
 
+      updateJob('Meeting aktualisieren & speichern...', 96);
+
       // 6. Assemble updated meeting
       const updatedMeeting: Meeting = {
         ...currentMeeting,
@@ -806,12 +842,13 @@ export const App: React.FC = () => {
       };
 
       // 7. Persist to IndexedDB
-      await AudioStorage.saveAudioBlob(currentMeeting.id, mergedBlob);
+      await AudioStorage.saveAudioBlob(targetMeetingId, mergedBlob);
       await AudioStorage.saveMeeting(updatedMeeting);
 
       // 8. Update React state
-      setMeetings((prev) => prev.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m)));
-      setActiveTab('transcript');
+      setMeetings((prev) => prev.map((m) => (m.id === targetMeetingId ? updatedMeeting : m)));
+
+      updateJob('Verarbeitung abgeschlossen ✓', 100, 'completed');
 
       setTaskAlertMessage(
         `Aufnahme erfolgreich angehängt: +${finalizedNewSegments.length} Abschnitte${
@@ -819,9 +856,17 @@ export const App: React.FC = () => {
         }.`
       );
       setTimeout(() => setTaskAlertMessage(null), 5000);
+
+      // Auto-remove completed job after 4.5 seconds
+      setTimeout(() => {
+        setMeetingJobs((prev) => prev.filter((j) => j.id !== jobId));
+      }, 4500);
     } catch (err) {
       console.error('Fehler beim Anhängen der Aufnahme:', err);
-      alert('Fehler beim Anhängen der Aufnahme: ' + (err instanceof Error ? err.message : String(err)));
+      const errMsg = err instanceof Error ? err.message : String(err);
+      updateJob(`Fehler: ${errMsg}`, 100, 'failed', errMsg);
+      setTaskAlertMessage(`Fehler beim Anhängen der Aufnahme: ${errMsg}`);
+      setTimeout(() => setTaskAlertMessage(null), 6000);
     } finally {
       setIsAppendingRecording(false);
     }
@@ -943,6 +988,7 @@ export const App: React.FC = () => {
             isRetranscribing={isRetranscribing}
             onAppendRecording={handleAppendRecordingToMeeting}
             isAppending={isAppendingRecording}
+            jobs={meetingJobs}
             hasApiKey={Boolean(config.apiKey && config.apiKey.trim().length > 0)}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onNavigateTab={setActiveTab}
@@ -989,6 +1035,7 @@ export const App: React.FC = () => {
             meeting={currentMeeting}
             tasks={currentMeeting.tasks || []}
             speakers={currentMeeting.speakers || []}
+            jobs={meetingJobs}
             onUpdateTasks={handleUpdateTasks}
             onExtractTasksAgain={handleExtractTasksAgain}
             isExtracting={isExtractingTasks}

@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users, GitMerge, Clock, MessageSquare, RefreshCw, Check, Mic, Plus } from 'lucide-react';
-import { Meeting, TranscriptSegment, Speaker } from '../../types';
+import { Meeting, TranscriptSegment, Speaker, MeetingJob } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
 import { formatTimestamp, formatDuration } from '../../utils/dateUtils';
 import { AppTab } from '../layout/Navigation';
 import { AppendRecordingModal } from '../recorder/AppendRecordingModal';
+import { MeetingJobsList } from '../meetings/MeetingJobsList';
 
 interface TranscriptViewerProps {
   meeting: Meeting;
+  jobs?: MeetingJob[];
   onUpdateSpeakerName: (speakerId: string, newName: string) => void;
   onRequestClarification: (speakerId: string) => void;
   onExtractTasks: () => void;
@@ -25,6 +27,7 @@ interface TranscriptViewerProps {
 
 export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   meeting,
+  jobs = [],
   onUpdateSpeakerName,
   onRequestClarification,
   onExtractTasks,
@@ -343,6 +346,9 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
           </div>
         </div>
 
+        {/* Hintergrund-Verarbeitungs-Jobs für dieses Meeting */}
+        <MeetingJobsList jobs={jobs.filter((j) => j.meetingId === meeting.id)} />
+
         {/* Sprecher erscheinen als Liste direkt unter Meeting */}
         {meeting.speakers.length > 0 && (
           <div 
@@ -564,9 +570,7 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
               ({formatDuration(totalDuration)})
             </span>
           </div>
-          <span className="text-[11px] text-[var(--text-muted)] hidden sm:inline">
-            Fahre über die Marker für Text-Vorschau • Klicke zum Anspringen im Chat
-          </span>
+
         </div>
 
         {/* Timeline ruler & track */}

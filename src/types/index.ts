@@ -66,3 +66,14 @@ export interface SpeakerClarificationRequest {
   suggestedNames: string[];
   reason: string;
 }
+
+export interface MeetingJob {
+  id: string;
+  meetingId: string;
+  title: string;
+  step: string;
+  progress: number; // 0 to 100
+  status: 'running' | 'completed' | 'failed';
+  createdAt: string;
+  error?: string;
+}

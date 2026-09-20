@@ -12,14 +12,16 @@ import {
   CheckCircle2 
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Task, TaskStatus, Meeting, Speaker } from '../../types';
+import { Task, TaskStatus, Meeting, Speaker, MeetingJob } from '../../types';
 import { KanbanCard } from './KanbanCard';
 import { TaskModal } from './TaskModal';
+import { MeetingJobsList } from '../meetings/MeetingJobsList';
 
 interface KanbanBoardProps {
   meeting: Meeting;
   tasks: Task[];
   speakers: Speaker[];
+  jobs?: MeetingJob[];
   onUpdateTasks: (tasks: Task[]) => void;
   onExtractTasksAgain: () => void;
   isExtracting: boolean;
@@ -39,6 +41,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   meeting,
   tasks,
   speakers,
+  jobs = [],
   onUpdateTasks,
   onExtractTasksAgain,
   isExtracting,
@@ -165,6 +168,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   return (
     <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 py-5 space-y-4 pb-24 md:pb-8">
+      {/* Background Processing Job List */}
+      <MeetingJobsList jobs={jobs.filter((j) => j.meetingId === meeting.id)} />
+
       {/* Control Bar: Filter, Search, New Task, Export */}
       <div 
         className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-lg border shadow-[var(--shadow-subtle)]"

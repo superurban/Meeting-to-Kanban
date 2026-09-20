@@ -106,14 +106,17 @@ export const AppendRecordingModal: React.FC<AppendRecordingModalProps> = ({
     }
   }, [isOpen, isProcessing]);
 
-  // Stop recording and directly trigger append & transcription
+  // Stop recording and directly trigger background append & transcription
   const handleStopAndAppend = async () => {
     if (!recorderRef.current) return;
     try {
       const { blob, mimeType, durationSeconds } = await recorderRef.current.stop();
       setIsRecording(false);
       recorderRef.current = null;
-      await onAppendRecording(blob, mimeType, Math.max(1, durationSeconds));
+      // Close modal immediately so the user can continue viewing the meeting
+      onClose();
+      // Start background processing
+      onAppendRecording(blob, mimeType, Math.max(1, durationSeconds));
     } catch (err) {
       console.error('Fehler beim Beenden der Aufnahme:', err);
       setErrorMsg('Fehler beim Beenden der Aufnahme.');
