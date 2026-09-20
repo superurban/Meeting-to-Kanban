@@ -636,6 +636,25 @@ export const App: React.FC = () => {
     setMeetings((prev) => prev.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m)));
   };
 
+  /**
+   * Rename a meeting title
+   */
+  const handleUpdateMeetingTitle = async (meetingId: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+
+    setMeetings((prev) =>
+      prev.map((m) => {
+        if (m.id === meetingId) {
+          const updated = { ...m, title: trimmed };
+          AudioStorage.saveMeeting(updated).catch(console.error);
+          return updated;
+        }
+        return m;
+      })
+    );
+  };
+
   const handleResetData = async () => {
     if (currentMeeting) {
       await AudioStorage.deleteMeeting(currentMeeting.id);
@@ -718,6 +737,7 @@ export const App: React.FC = () => {
             onRetranscribe={handleRetranscribeMeeting}
             isRetranscribing={isRetranscribing}
             onNavigateTab={setActiveTab}
+            onUpdateMeetingTitle={handleUpdateMeetingTitle}
           />
         )}
 

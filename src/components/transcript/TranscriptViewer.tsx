@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users, GitMerge, Clock, MessageSquare, RefreshCw } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users, GitMerge, Clock, MessageSquare, RefreshCw, Check } from 'lucide-react';
 import { Meeting, TranscriptSegment, Speaker } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
 import { formatTimestamp, formatDuration } from '../../utils/dateUtils';
@@ -15,6 +15,7 @@ interface TranscriptViewerProps {
   isRetranscribing?: boolean;
   onNavigateTab?: (tab: AppTab) => void;
   onMergeSpeakers?: (sourceSpeakerId: string, targetSpeakerId: string) => void;
+  onUpdateMeetingTitle?: (meetingId: string, newTitle: string) => void;
 }
 
 export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
@@ -26,12 +27,30 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
   onRetranscribe,
   isRetranscribing,
   onNavigateTab,
-  onMergeSpeakers
+  onMergeSpeakers,
+  onUpdateMeetingTitle
 }) => {
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
   const [playingSpeakerId, setPlayingSpeakerId] = useState<string | null>(null);
   const [editingSpeakerId, setEditingSpeakerId] = useState<string | null>(null);
   const [editNameVal, setEditNameVal] = useState('');
+
+  // Meeting Title Editing State
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState(meeting.title || '');
+
+  useEffect(() => {
+    setTitleInput(meeting.title || '');
+    setIsEditingTitle(false);
+  }, [meeting.id, meeting.title]);
+
+  const handleSaveTitle = () => {
+    const trimmed = titleInput.trim();
+    if (trimmed && onUpdateMeetingTitle) {
+      onUpdateMeetingTitle(meeting.id, trimmed);
+    }
+    setIsEditingTitle(false);
+  };
 
   // Interactive Timeline Scrubber & Sync State
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
@@ -197,9 +216,70 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-[var(--text-primary)]">
-              {meeting.title || 'Meeting-Transkript'}
-            </h2>
+            {isEditingTitle ? (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <input
+                  type="text"
+                  autoFocus
+                  value={titleInput}
+                  onChange={(e) => setTitleInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSaveTitle();
+                    } else if (e.key === 'Escape') {
+                      setTitleInput(meeting.title || '');
+                      setIsEditingTitle(false);
+                    }
+                  }}
+                  className="input-saas py-1 px-2.5 text-sm font-semibold w-72 sm:w-96"
+                  placeholder="Meeting-Titel eingeben..."
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveTitle}
+                  className="btn-primary py-1 px-2 text-xs"
+                  title="Speichern"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTitleInput(meeting.title || '');
+                    setIsEditingTitle(false);
+                  }}
+                  className="btn-secondary py-1 px-2 text-xs"
+                  title="Abbrechen"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 group">
+                <h2 
+                  className="text-base font-semibold text-[var(--text-primary)] cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    setTitleInput(meeting.title || '');
+                    setIsEditingTitle(true);
+                  }}
+                  title="Klicken zum Umbenennen"
+                >
+                  {meeting.title || 'Meeting-Transkript'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTitleInput(meeting.title || '');
+                    setIsEditingTitle(true);
+                  }}
+                  className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                  title="Meeting umbenennen"
+                  aria-label="Meeting umbenennen"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
               <span>{meeting.segments.length} Abschnitte</span>
               <span>•</span>
