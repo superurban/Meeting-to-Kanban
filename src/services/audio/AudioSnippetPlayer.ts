@@ -25,14 +25,13 @@ export class AudioSnippetPlayer {
 
     const naturalDuration = Math.max(0.5, endTime - startTime);
     const duration = maxDurationSeconds ? Math.min(maxDurationSeconds, naturalDuration) : naturalDuration;
+    const targetEndTime = maxDurationSeconds ? (startTime + duration) : Math.max(endTime, startTime + naturalDuration);
 
     if (blobOrUrl) {
       try {
         const url = typeof blobOrUrl === 'string' ? blobOrUrl : URL.createObjectURL(blobOrUrl);
         const audio = new Audio(url);
         this.currentAudio = audio;
-
-        audio.currentTime = Math.max(0, startTime);
 
         const handleStop = () => {
           this.stopCurrent();
@@ -43,11 +42,41 @@ export class AudioSnippetPlayer {
           this.fallbackSpeech(textFallback, duration);
         };
 
-        await audio.play();
+        const executePlay = async () => {
+          try {
+            if (startTime > 0) {
+              audio.currentTime = startTime;
+            }
 
-        this.stopTimeout = window.setTimeout(() => {
-          handleStop();
-        }, duration * 1000);
+            // Track playback to stop cleanly at targetEndTime
+            audio.ontimeupdate = () => {
+              if (audio.currentTime >= targetEndTime) {
+                handleStop();
+              }
+            };
+
+            await audio.play();
+
+            // Safety timeout: duration + 1.5s buffer
+            this.stopTimeout = window.setTimeout(() => {
+              handleStop();
+            }, (duration + 1.5) * 1000);
+          } catch (err) {
+            console.warn('Audio play failed, using fallback speech:', err);
+            this.fallbackSpeech(textFallback, duration);
+          }
+        };
+
+        if (audio.readyState >= 1) {
+          // Metadata already available, seek and play immediately
+          await executePlay();
+        } else {
+          // Wait for metadata so currentTime seek is guaranteed across all browsers
+          audio.addEventListener('loadedmetadata', () => {
+            executePlay();
+          }, { once: true });
+          audio.load();
+        }
 
         return;
       } catch (err) {
@@ -103,6 +132,9 @@ export class AudioSnippetPlayer {
     }
     if (this.currentAudio) {
       this.currentAudio.pause();
+      this.currentAudio.ontimeupdate = null;
+      this.currentAudio.onended = null;
+      this.currentAudio.onerror = null;
       this.currentAudio = null;
     }
     if ('speechSynthesis' in window) {
