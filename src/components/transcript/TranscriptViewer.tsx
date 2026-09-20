@@ -686,14 +686,11 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
               Transkription
             </h3>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
-            {activeSegmentId && (
-              <span className="text-blue-600 dark:text-blue-400 font-medium animate-pulse">
-                Stelle fokussiert
-              </span>
-            )}
-            <span>{meeting.segments.length} Beiträge</span>
-          </div>
+          {activeSegmentId && (
+            <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium animate-pulse">
+              Stelle fokussiert
+            </span>
+          )}
         </div>
 
         {/* Leichter Textkasten im Dialogstil: Name: Transkription */}
