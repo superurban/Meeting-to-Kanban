@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, FileText, Users, Kanban, TableProperties } from 'lucide-react';
+import { Mic, FileText, Users, Kanban } from 'lucide-react';
 
 export type AppTab = 'record' | 'transcript' | 'speakers' | 'kanban' | 'meetings';
 
@@ -55,13 +55,6 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: Kanban,
       badge: taskCount > 0 ? `${taskCount}` : null,
       badgeClass: 'badge-on-track'
-    },
-    {
-      id: 'meetings' as AppTab,
-      label: 'Meetings',
-      icon: TableProperties,
-      badge: meetingCount > 0 ? `${meetingCount}` : null,
-      badgeClass: 'badge-neutral'
     }
   ];
 
@@ -110,7 +103,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           borderColor: 'var(--border-color)'
         }}
       >
-        <div className="grid grid-cols-5 gap-0.5">
+        <div className="grid grid-cols-4 gap-0.5">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = currentTab === tab.id;
