@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
   Users, 
-  FileText, 
   Volume2, 
   Play, 
   Square, 
@@ -9,8 +8,7 @@ import {
   AlertCircle, 
   Edit3, 
   Clock, 
-  MessageSquare,
-  ArrowRight
+  MessageSquare
 } from 'lucide-react';
 import { Meeting, Speaker, TranscriptSegment } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
@@ -102,37 +100,6 @@ export const SpeakersViewer: React.FC<SpeakersViewerProps> = ({
 
   return (
     <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 py-5 space-y-4">
-      {/* Sub-Tabs Switcher: Transkript & Sprecher */}
-      <div 
-        className="flex items-center justify-between pb-3 border-b"
-        style={{ borderColor: 'var(--border-color)' }}
-      >
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onNavigateTab('transcript')}
-            className="btn-secondary text-xs"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Transkript ({meeting.segments.length})</span>
-          </button>
-          <button
-            onClick={() => onNavigateTab('speakers')}
-            className="btn-primary text-xs"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Sprecher ({meeting.speakers.length})</span>
-          </button>
-        </div>
-
-        <button
-          onClick={() => onNavigateTab('kanban')}
-          className="btn-secondary text-xs py-1"
-        >
-          <span>Zum Kanban Board</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
       {/* Overview Header */}
       <div 
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border shadow-[var(--shadow-subtle)]"

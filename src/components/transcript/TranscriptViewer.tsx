@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, ArrowRight, FileText, Users } from 'lucide-react';
+import { Play, Square, AlertTriangle, Sparkles, Volume2, Edit2, Users } from 'lucide-react';
 import { Meeting, TranscriptSegment, Speaker } from '../../types';
 import { AudioSnippetPlayer } from '../../services/audio/AudioSnippetPlayer';
 import { formatTimestamp } from '../../utils/dateUtils';
@@ -84,39 +84,6 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
 
   return (
     <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 py-5 space-y-4">
-      {/* Sub-Tabs Switcher: Transkript & Sprecher */}
-      {onNavigateTab && (
-        <div 
-          className="flex items-center justify-between pb-3 border-b"
-          style={{ borderColor: 'var(--border-color)' }}
-        >
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onNavigateTab('transcript')}
-              className="btn-primary text-xs"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Transkript ({meeting.segments.length})</span>
-            </button>
-            <button
-              onClick={() => onNavigateTab('speakers')}
-              className="btn-secondary text-xs"
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Sprecher ({meeting.speakers.length})</span>
-            </button>
-          </div>
-
-          <button
-            onClick={() => onNavigateTab('kanban')}
-            className="btn-secondary text-xs py-1"
-          >
-            <span>Zum Kanban Board</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
       {/* Action & Status Header with Speakers List */}
       <div 
         className="p-4 rounded-lg border shadow-[var(--shadow-subtle)] space-y-3.5"
