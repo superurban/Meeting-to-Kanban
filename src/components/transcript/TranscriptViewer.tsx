@@ -359,13 +359,6 @@ export const TranscriptViewer: React.FC<TranscriptViewerProps> = ({
                     <span>{speakerName}</span>
                     <Edit2 className="w-2.5 h-2.5 opacity-60" />
                   </button>
-
-                  {/* Addressed To Note */}
-                  {seg.addressedTo && (
-                    <span className="badge-neutral text-[10px]">
-                      Spricht <strong>{seg.addressedTo}</strong> an
-                    </span>
-                  )}
                 </div>
 
                 {/* Snippet Playback Button & Time */}
